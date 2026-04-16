@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from "react";
-import { ArrowLeft, Phone, MessageCircle, MapPin, Trash2 } from "lucide-react";
+import React from "react";
+import { ArrowLeft, Phone, MessageCircle, MapPin, Trash2, CalendarPlus } from "lucide-react";
 import { StatusBadge } from "../components/common/Badges";
 import BookingEditor from "../components/bookings/BookingEditor";
 import DayTimeline from "../components/bookings/DayTimeline";
@@ -15,7 +15,6 @@ export default function ContactDetailPage({
   selectedSlot,
   selectedBookingId,
   bookingEditor,
-  bookingEditorScrollKey,
   onPrevDay,
   onToday,
   onNextDay,
@@ -29,14 +28,6 @@ export default function ContactDetailPage({
   onChangeField,
   onToggleTag,
 }) {
-  const formRef = useRef(null);
-
-  useEffect(() => {
-    if (formRef.current && bookingEditor.isOpen) {
-      formRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  }, [bookingEditorScrollKey, bookingEditor.isOpen]);
-
   if (!contact) return null;
 
   const nextBooking = getNextBookingForContact(contact.id, bookings);
@@ -55,7 +46,14 @@ export default function ContactDetailPage({
         </button>
 
         <div className="flex flex-wrap gap-2">
-          <button className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white">
+          <button
+            onClick={() => onCreateBooking("")}
+            className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white"
+          >
+            <CalendarPlus className="h-4 w-4" />
+            Add Booking
+          </button>
+          <button className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium">
             <Phone className="h-4 w-4" />
             Call
           </button>
@@ -93,7 +91,7 @@ export default function ContactDetailPage({
               </div>
               <div>
                 <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Status</label>
-                <select value={contact.status || "New"} onChange={(e) => onChangeField("status", e.target.value)} className="mt-1 h-11 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none">
+                <select value={contact.status || "New Lead"} onChange={(e) => onChangeField("status", e.target.value)} className="mt-1 h-11 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none">
                   {statusOptions.map((opt) => (
                     <option key={opt.id} value={opt.name}>{opt.name}</option>
                   ))}
@@ -155,9 +153,6 @@ export default function ContactDetailPage({
       </section>
 
       <section className="space-y-6">
-        <div ref={formRef}>
-          <BookingEditor {...bookingEditor} contacts={contacts} />
-        </div>
         <DayTimeline
           selectedDate={selectedDate}
           selectedSlot={selectedSlot}
@@ -174,6 +169,8 @@ export default function ContactDetailPage({
           onDeleteBooking={onDeleteBooking}
         />
       </section>
+
+      <BookingEditor {...bookingEditor} contacts={contacts} />
     </>
   );
 }

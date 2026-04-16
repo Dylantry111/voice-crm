@@ -34,6 +34,7 @@ export default function App() {
   const [tagOptions, setTagOptions] = useState(DEFAULT_TAG_OPTIONS);
   const [eventTypes, setEventTypes] = useState(DEFAULT_EVENT_TYPES);
   const [settingsMode, setSettingsMode] = useState("browser_local_storage");
+  const [currentUserEmail, setCurrentUserEmail] = useState("");
 
   const [voiceInput, setVoiceInput] = useState(
     "Tom phone 021 123 4567 email tom@test.com address 13 Preston Avenue, Mount Albert, Auckland wants living room shutters."
@@ -78,6 +79,7 @@ export default function App() {
   async function loadInitialData() {
     setLoadingContacts(true);
     const { data: { user } } = await supabase.auth.getUser();
+    if (user?.email) setCurrentUserEmail(user.email);
     if (!user) {
       setLoadingContacts(false);
       return;
@@ -163,6 +165,7 @@ export default function App() {
 
   async function persistContact() {
     const { data: { user } } = await supabase.auth.getUser();
+    if (user?.email) setCurrentUserEmail(user.email);
     if (!user) {
       alert("Please log in first.");
       return null;
@@ -198,7 +201,11 @@ export default function App() {
     try {
       const newContact = await persistContact();
       if (!newContact) return;
-      openContact(newContact);
+      setSelectedContact(newContact);
+      setView("detail");
+      setBookingEditorOpen(false);
+      setSelectedSlot("");
+      setSelectedBookingId(null);
     } catch (error) {
       console.error(error);
       alert(`Save failed: ${error.message}`);
@@ -462,6 +469,18 @@ export default function App() {
     );
   }
 
+  function resetStatuses() {
+    setStatusOptions(DEFAULT_STATUS_OPTIONS);
+  }
+
+  function resetTags() {
+    setTagOptions(DEFAULT_TAG_OPTIONS);
+  }
+
+  function resetEventTypes() {
+    setEventTypes(DEFAULT_EVENT_TYPES);
+  }
+
   async function handleSaveSettings() {
     const result = await saveSettings({
       statusOptions,
@@ -475,6 +494,7 @@ export default function App() {
 
   async function openIntakeShare() {
     const { data: { user } } = await supabase.auth.getUser();
+    if (user?.email) setCurrentUserEmail(user.email);
     if (!user) {
       alert("Please log in first.");
       return;
@@ -561,6 +581,8 @@ export default function App() {
                   onOpen: openIntakeShare,
                   onClose: () => setIntakeShareOpen(false),
                 }}
+                onOpenContact={openContact}
+                onOpenBooking={handleEditBooking}
               />
             )}
 
@@ -612,7 +634,6 @@ export default function App() {
                 selectedSlot={selectedSlot}
                 selectedBookingId={selectedBookingId}
                 bookingEditor={bookingEditorProps}
-                bookingEditorScrollKey={bookingEditorScrollKey}
                 onPrevDay={() => changeSelectedDate(-1)}
                 onToday={goToToday}
                 onNextDay={() => changeSelectedDate(1)}
@@ -636,7 +657,6 @@ export default function App() {
                 bookings={bookings}
                 contacts={contacts}
                 bookingEditor={bookingEditorProps}
-                bookingEditorScrollKey={bookingEditorScrollKey}
                 onPrevDay={() => changeSelectedDate(-1)}
                 onToday={goToToday}
                 onNextDay={() => changeSelectedDate(1)}
@@ -662,9 +682,12 @@ export default function App() {
                 onRemoveEventType={removeEventType}
                 onUpdateEventTypeMinutes={updateEventTypeMinutes}
                 onSaveSettings={handleSaveSettings}
+                onResetStatuses={resetStatuses}
+                onResetTags={resetTags}
+                onResetEventTypes={resetEventTypes}
               />
             )}
-            {view === "export" && <ExportPage contacts={contacts} tagOptions={tagOptions} />}
+            {view === "export" && <ExportPage contacts={contacts} tagOptions={tagOptions} currentUserEmail={currentUserEmail} />}
           </main>
         </div>
       </div>

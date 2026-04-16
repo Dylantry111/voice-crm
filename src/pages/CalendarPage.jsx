@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React from "react";
 import DayTimeline from "../components/bookings/DayTimeline";
 import BookingEditor from "../components/bookings/BookingEditor";
 
@@ -9,7 +9,6 @@ export default function CalendarPage({
   bookings,
   contacts,
   bookingEditor,
-  bookingEditorScrollKey,
   onPrevDay,
   onToday,
   onNextDay,
@@ -19,14 +18,6 @@ export default function CalendarPage({
   onEditBooking,
   onDeleteBooking,
 }) {
-  const formRef = useRef(null);
-
-  useEffect(() => {
-    if (formRef.current && bookingEditor.isOpen) {
-      formRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
-  }, [bookingEditorScrollKey, bookingEditor.isOpen]);
-
   return (
     <section className="space-y-6">
       <section className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
@@ -34,7 +25,7 @@ export default function CalendarPage({
           <div>
             <div className="text-lg font-semibold">Calendar workflow</div>
             <div className="mt-1 text-sm text-slate-500">
-              Select an empty slot, then click Create Booking. The form below will auto-fill and scroll into view.
+              Select an empty slot, then create a booking in the modal. Tap any existing booking to edit or delete it.
             </div>
           </div>
         </div>
@@ -56,9 +47,7 @@ export default function CalendarPage({
         onDeleteBooking={onDeleteBooking}
       />
 
-      <div ref={formRef}>
-        <BookingEditor {...bookingEditor} contacts={contacts} />
-      </div>
+      <BookingEditor {...bookingEditor} contacts={contacts} />
     </section>
   );
 }

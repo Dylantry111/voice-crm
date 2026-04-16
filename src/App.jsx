@@ -69,6 +69,12 @@ export default function App() {
     if (!isPublicIntakeRoute) loadInitialData();
   }, []);
 
+  useEffect(() => {
+    if (!isPublicIntakeRoute) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }, [view, isPublicIntakeRoute]);
+
   async function loadInitialData() {
     setLoadingContacts(true);
     const { data: { user } } = await supabase.auth.getUser();
@@ -505,25 +511,39 @@ export default function App() {
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900">
       <div className="mx-auto flex min-h-screen max-w-7xl flex-col">
-        <header className="border-b border-slate-200 bg-white/90 backdrop-blur">
+        <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
           <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-4 md:px-6">
-            <div>
+            <div className="min-w-0">
               <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1 text-[11px] font-medium text-slate-600">
                 <Briefcase className="h-3.5 w-3.5" />
                 One phone. Separate work from life.
               </div>
-              <h1 className="mt-2 text-xl font-semibold tracking-tight md:text-2xl">Voice-first Client Workspace</h1>
-              <p className="mt-1 text-sm text-slate-500">
+              <h1 className="mt-2 text-lg font-semibold tracking-tight md:text-2xl">Voice-first Client Workspace</h1>
+              <p className="mt-1 hidden text-sm text-slate-500 md:block">
                 Capture clients fast, keep full notes, contact instantly, manage bookings, and export filtered contacts.
               </p>
             </div>
           </div>
         </header>
 
-        <div className="mx-auto grid w-full max-w-7xl flex-1 gap-6 px-4 py-6 md:grid-cols-[220px_1fr] md:px-6">
+        <div className="mx-auto grid w-full max-w-7xl flex-1 gap-4 px-4 py-4 md:grid-cols-[220px_1fr] md:gap-6 md:px-6 md:py-6">
           <Sidebar view={view} setView={setView} testsPass={testsPass} />
 
-          <main className="space-y-6">
+          <main className="min-w-0 space-y-5 md:space-y-6">
+            <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm md:hidden">
+              <div className="text-xs uppercase tracking-wide text-slate-500">Current section</div>
+              <div className="mt-1 text-lg font-semibold text-slate-900">
+                {{
+                  dashboard: "Dashboard",
+                  capture: "Capture",
+                  contacts: "Contacts",
+                  detail: selectedContact?.name || "Contact Detail",
+                  calendar: "Calendar",
+                  settings: "Settings",
+                  export: "Export",
+                }[view] || "Workspace"}
+              </div>
+            </section>
             {view === "dashboard" && (
               <DashboardPage
                 contacts={contacts}

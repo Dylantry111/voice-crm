@@ -6,6 +6,7 @@ import { smartFill, runSelfTests } from "./lib/parsers/contactParser";
 import { buildDuplicateMessage, findDuplicateContacts } from "./lib/parsers/duplicateChecker";
 import Sidebar from "./components/layout/Sidebar";
 import DashboardPage from "./pages/DashboardPage";
+import PublicIntakePage from "./pages/PublicIntakePage";
 import CapturePage from "./pages/CapturePage";
 import ContactsPage from "./pages/ContactsPage";
 import ContactDetailPage from "./pages/ContactDetailPage";
@@ -14,10 +15,15 @@ import SettingsPage from "./pages/SettingsPage";
 import ExportPage from "./pages/ExportPage";
 import { createContact, deleteContactCascade, fetchContacts, tryUpdateContactTags, updateContact } from "./services/contactsService";
 import { createBooking, deleteBooking, fetchBookings, updateBooking } from "./services/bookingsService";
-import { loadSettings } from "./services/settingsService";
+import { loadSettings, saveSettings } from "./services/settingsService";
+import { fetchOrCreateMyIntakeProfile } from "./services/publicIntakeService";
 import { supabase } from "./lib/supabase";
 
 export default function App() {
+  const pathname = typeof window !== "undefined" ? window.location.pathname : "/";
+  const intakeTokenFromPath = pathname.startsWith("/intake/") ? pathname.replace("/intake/", "").trim() : "";
+  const isPublicIntakeRoute = Boolean(intakeTokenFromPath);
+
   const [view, setView] = useState("dashboard");
   const [contacts, setContacts] = useState([]);
   const [bookings, setBookings] = useState([]);
@@ -27,6 +33,7 @@ export default function App() {
   const [statusOptions, setStatusOptions] = useState(DEFAULT_STATUS_OPTIONS);
   const [tagOptions, setTagOptions] = useState(DEFAULT_TAG_OPTIONS);
   const [eventTypes, setEventTypes] = useState(DEFAULT_EVENT_TYPES);
+  const [settingsMode, setSettingsMode] = useState("browser_local_storage");
 
   const [voiceInput, setVoiceInput] = useState(
     "Tom phone 021 123 4567 email tom@test.com address 13 Preston Avenue, Mount Albert, Auckland wants living room shutters."
@@ -47,6 +54,9 @@ export default function App() {
   const [bookingEditorMode, setBookingEditorMode] = useState("create");
   const [editingBookingId, setEditingBookingId] = useState(null);
   const [bookingEditorScrollKey, setBookingEditorScrollKey] = useState(0);
+  const [intakeShareOpen, setIntakeShareOpen] = useState(false);
+  const [intakeShareLoading, setIntakeShareLoading] = useState(false);
+  const [intakeProfile, setIntakeProfile] = useState(null);
   const [bookingForm, setBookingForm] = useState({
     contact_id: "",
     event_type: DEFAULT_EVENT_TYPES[0].name,
@@ -56,7 +66,7 @@ export default function App() {
   });
 
   useEffect(() => {
-    loadInitialData();
+    if (!isPublicIntakeRoute) loadInitialData();
   }, []);
 
   async function loadInitialData() {
@@ -78,6 +88,7 @@ export default function App() {
       setStatusOptions(settings.statusOptions || DEFAULT_STATUS_OPTIONS);
       setTagOptions(settings.tagOptions || DEFAULT_TAG_OPTIONS);
       setEventTypes(settings.eventTypes || DEFAULT_EVENT_TYPES);
+      setSettingsMode(settings.mode || "browser_local_storage");
       if (contactRows.length) setSelectedContact(contactRows[0]);
     } catch (error) {
       console.error(error);
@@ -383,6 +394,20 @@ export default function App() {
       end_time: realEnd.toISOString(),
     };
 
+    const overlapItems = bookings.filter((item) => {
+      if (bookingEditorMode === "edit" && editingBookingId && item.id === editingBookingId) return false;
+      const itemStart = new Date(item.start_time);
+      const itemEnd = new Date(item.end_time);
+      return range.start < itemEnd && realEnd > itemStart;
+    });
+
+    if (overlapItems.length) {
+      const proceed = window.confirm(
+        `This booking overlaps with ${overlapItems.length} existing booking(s). Press OK to continue anyway, or Cancel to stop.`
+      );
+      if (!proceed) return;
+    }
+
     try {
       if (bookingEditorMode === "edit" && editingBookingId) {
         const saved = await updateBooking(editingBookingId, payload);
@@ -400,6 +425,72 @@ export default function App() {
     }
   }
 
+
+  function addStatus(name) {
+    setStatusOptions((prev) => [...prev, { id: crypto.randomUUID(), name, color: "bg-slate-100 text-slate-700" }]);
+  }
+
+  function removeStatus(id) {
+    setStatusOptions((prev) => prev.filter((x) => x.id !== id));
+  }
+
+  function addTag(name) {
+    setTagOptions((prev) => [...prev, { id: crypto.randomUUID(), name, color: "bg-slate-100 text-slate-700" }]);
+  }
+
+  function removeTag(id) {
+    setTagOptions((prev) => prev.filter((x) => x.id !== id));
+  }
+
+  function addEventType(name, minutes = 60) {
+    setEventTypes((prev) => [...prev, { id: crypto.randomUUID(), name, minutes, color: "bg-slate-900 text-white" }]);
+  }
+
+  function removeEventType(id) {
+    setEventTypes((prev) => prev.filter((x) => x.id !== id));
+  }
+
+  function updateEventTypeMinutes(id, minutes) {
+    setEventTypes((prev) =>
+      prev.map((x) => (x.id === id ? { ...x, minutes } : x))
+    );
+  }
+
+  async function handleSaveSettings() {
+    const result = await saveSettings({
+      statusOptions,
+      tagOptions,
+      eventTypes,
+    });
+    setSettingsMode(result.mode || "browser_local_storage");
+    alert("Settings saved.");
+  }
+
+
+  async function openIntakeShare() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      alert("Please log in first.");
+      return;
+    }
+
+    setIntakeShareLoading(true);
+    try {
+      const profile = await fetchOrCreateMyIntakeProfile(user.id);
+      setIntakeProfile(profile);
+      setIntakeShareOpen(true);
+    } catch (error) {
+      console.error(error);
+      alert(`Failed to load QR intake profile: ${error.message}`);
+    } finally {
+      setIntakeShareLoading(false);
+    }
+  }
+
+  async function refreshIntakeShare() {
+    await openIntakeShare();
+  }
+
   const bookingEditorProps = {
     isOpen: bookingEditorOpen,
     mode: bookingEditorMode,
@@ -410,6 +501,10 @@ export default function App() {
     onChange: updateBookingForm,
     onSave: saveBookingFromEditor,
   };
+
+  if (isPublicIntakeRoute) {
+    return <PublicIntakePage intakeToken={intakeTokenFromPath} />;
+  }
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900">
@@ -433,7 +528,26 @@ export default function App() {
           <Sidebar view={view} setView={setView} testsPass={testsPass} />
 
           <main className="space-y-6">
-            {view === "dashboard" && <DashboardPage contacts={contacts} bookings={bookings} />}
+            {view === "dashboard" && (
+              <DashboardPage
+                contacts={contacts}
+                bookings={bookings}
+                tagOptions={tagOptions}
+                intakeShare={{
+                  isOpen: intakeShareOpen,
+                  isLoading: intakeShareLoading,
+                  link: intakeProfile
+                    ? `${window.location.origin}/intake/${intakeProfile.intake_token}`
+                    : "",
+                  qrImageUrl: intakeProfile
+                    ? `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(`${window.location.origin}/intake/${intakeProfile.intake_token}`)}`
+                    : "",
+                  onOpen: openIntakeShare,
+                  onRefresh: refreshIntakeShare,
+                  onClose: () => setIntakeShareOpen(false),
+                }}
+              />
+            )}
 
             {view === "capture" && (
               <CapturePage
@@ -519,7 +633,22 @@ export default function App() {
               />
             )}
 
-            {view === "settings" && <SettingsPage />}
+            {view === "settings" && (
+              <SettingsPage
+                statusOptions={statusOptions}
+                tagOptions={tagOptions}
+                eventTypes={eventTypes}
+                settingsMode={settingsMode}
+                onAddStatus={addStatus}
+                onRemoveStatus={removeStatus}
+                onAddTag={addTag}
+                onRemoveTag={removeTag}
+                onAddEventType={addEventType}
+                onRemoveEventType={removeEventType}
+                onUpdateEventTypeMinutes={updateEventTypeMinutes}
+                onSaveSettings={handleSaveSettings}
+              />
+            )}
             {view === "export" && <ExportPage contacts={contacts} tagOptions={tagOptions} />}
           </main>
         </div>

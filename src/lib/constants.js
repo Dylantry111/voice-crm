@@ -45,3 +45,9 @@ export const ALL_TIME_SLOTS = [
   "16:00 - 16:30",
   "16:30 - 17:00",
 ];
+
+export const STORAGE_KEYS = {
+  statusOptions: "crm_status_options_v2",
+  tagOptions: "crm_tag_options_v2",
+  eventTypes: "crm_event_types_v2",
+};

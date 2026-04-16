@@ -88,9 +88,6 @@ export default function DashboardPage({ contacts, bookings, tagOptions, intakeSh
           </div>
 
           <div className="mt-4 flex gap-3">
-            <button onClick={intakeShare.onRefresh} className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-800">
-              Refresh QR
-            </button>
             <button onClick={intakeShare.onClose} className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-medium text-white">
               Close
             </button>

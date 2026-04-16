@@ -487,9 +487,7 @@ export default function App() {
     }
   }
 
-  async function refreshIntakeShare() {
-    await openIntakeShare();
-  }
+
 
   const bookingEditorProps = {
     isOpen: bookingEditorOpen,
@@ -543,7 +541,6 @@ export default function App() {
                     ? `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(`${window.location.origin}/intake/${intakeProfile.intake_token}`)}`
                     : "",
                   onOpen: openIntakeShare,
-                  onRefresh: refreshIntakeShare,
                   onClose: () => setIntakeShareOpen(false),
                 }}
               />

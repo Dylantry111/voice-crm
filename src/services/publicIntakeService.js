@@ -55,7 +55,7 @@ export async function submitPublicIntake(profile, payload) {
         address: payload.address || "",
         requirement: "",
         notes: payload.notes || "",
-        status: "New",
+        status: "New Lead",
         tags: ["QR Lead"],
       },
     ])

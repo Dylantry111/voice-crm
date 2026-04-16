@@ -157,7 +157,7 @@ export function mapContactRow(item) {
     address: item.address || "",
     requirement: item.requirement || "",
     notes: item.notes || "",
-    status: item.status || "New",
+    status: item.status || "New Lead",
     tags: Array.isArray(item.tags) ? item.tags : [],
     touchpoints: 1,
     meetings: 0,

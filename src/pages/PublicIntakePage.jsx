@@ -44,13 +44,6 @@ export default function PublicIntakePage({ intakeToken }) {
     try {
       await submitPublicIntake(profile, form);
       setSubmitState("success");
-      setForm({
-        name: "",
-        phone: "",
-        email: "",
-        address: "",
-        notes: "",
-      });
     } catch (error) {
       setSubmitState("idle");
       setErrorMessage(error.message || "Failed to submit.");
@@ -78,6 +71,22 @@ export default function PublicIntakePage({ intakeToken }) {
         <div className="mx-auto max-w-2xl rounded-3xl border border-slate-200 bg-white p-8 shadow-sm">
           <div className="text-lg font-semibold text-slate-900">This intake page is unavailable.</div>
           <div className="mt-2 text-sm text-slate-500">{errorMessage || "The QR code may be disabled or not configured yet."}</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (submitState === "success") {
+    return (
+      <div className="min-h-screen bg-slate-100 px-4 py-10">
+        <div className="mx-auto max-w-2xl rounded-3xl border border-slate-200 bg-white p-10 shadow-sm text-center">
+          <div className="text-3xl font-semibold text-slate-900">Thank you</div>
+          <div className="mt-3 text-sm text-slate-500">
+            Your information has been submitted successfully.
+          </div>
+          <div className="mt-2 text-sm text-slate-500">
+            We will contact you soon.
+          </div>
         </div>
       </div>
     );
@@ -149,12 +158,6 @@ export default function PublicIntakePage({ intakeToken }) {
           {errorMessage ? (
             <div className="mt-4 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-700">
               {errorMessage}
-            </div>
-          ) : null}
-
-          {submitState === "success" ? (
-            <div className="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-700">
-              Thank you. Your information has been submitted successfully.
             </div>
           ) : null}
 

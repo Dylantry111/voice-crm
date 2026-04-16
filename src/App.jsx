@@ -180,7 +180,7 @@ export default function App() {
       address: draft.address || "",
       requirement: draft.requirement || "General enquiry",
       notes: draft.notes || voiceInput,
-      status: "New",
+      status: "New Lead",
       tags: [],
     });
 
@@ -486,8 +486,6 @@ export default function App() {
       setIntakeShareLoading(false);
     }
   }
-
-
 
   const bookingEditorProps = {
     isOpen: bookingEditorOpen,

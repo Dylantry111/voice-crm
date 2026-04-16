@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React from "react";
 import { formatSlotTimeRange } from "../lib/dateUtils";
 
 function SmallStat({ label, value }) {
@@ -26,38 +26,23 @@ function weekdayLabel(dateValue) {
   });
 }
 
-export default function DashboardPage({ contacts, bookings, tagOptions, intakeShare }) {
-  const [dashboardTagFilter, setDashboardTagFilter] = useState("");
-
-  const upcomingBookings = useMemo(() => {
-    return bookings
-      .filter((booking) => withinNext7Days(booking.start_time))
-      .sort((a, b) => new Date(a.start_time) - new Date(b.start_time))
-      .map((booking) => {
-        const contact = contacts.find((c) => c.id === booking.contact_id);
-        return {
-          ...booking,
-          contactName: contact?.name || "Booked Contact",
-          address: contact?.address || "No address",
-        };
-      });
-  }, [bookings, contacts]);
-
-  const contactsWithoutUpcomingBooking = useMemo(() => {
-    return contacts.filter((contact) => {
-      const hasUpcoming = bookings.some(
-        (booking) =>
-          booking.contact_id === contact.id &&
-          new Date(booking.end_time) >= new Date()
-      );
-      if (hasUpcoming) return false;
-
-      if (dashboardTagFilter) {
-        return Array.isArray(contact.tags) && contact.tags.includes(dashboardTagFilter);
-      }
-      return true;
+export default function DashboardPage({ contacts, bookings, intakeShare }) {
+  const upcomingBookings = bookings
+    .filter((booking) => withinNext7Days(booking.start_time))
+    .sort((a, b) => new Date(a.start_time) - new Date(b.start_time))
+    .map((booking) => {
+      const contact = contacts.find((c) => c.id === booking.contact_id);
+      return {
+        ...booking,
+        contactName: contact?.name || "Booked Contact",
+        address: contact?.address || "No address",
+      };
     });
-  }, [contacts, bookings, dashboardTagFilter]);
+
+  const followUpQueue = contacts.filter((contact) => {
+    const tags = Array.isArray(contact.tags) ? contact.tags : [];
+    return tags.includes("Follow-up Needed");
+  });
 
   return (
     <section className="space-y-6">
@@ -99,7 +84,7 @@ export default function DashboardPage({ contacts, bookings, tagOptions, intakeSh
         <SmallStat label="Total Contacts" value={contacts.length} />
         <SmallStat label="Total Bookings" value={bookings.length} />
         <SmallStat label="Next 7 Days" value={upcomingBookings.length} />
-        <SmallStat label="Unscheduled Contacts" value={contactsWithoutUpcomingBooking.length} />
+        <SmallStat label="Follow-up Queue" value={followUpQueue.length} />
         <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
           <div className="text-sm text-slate-500">Customer Intake</div>
           <button
@@ -138,40 +123,24 @@ export default function DashboardPage({ contacts, bookings, tagOptions, intakeSh
         </div>
 
         <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="text-lg font-semibold">Unscheduled Contacts</div>
+          <div className="text-lg font-semibold">Follow-up Queue</div>
           <div className="mt-2 text-sm text-slate-500">
-            Customers without an upcoming booking. Use the tag filter to focus your next actions.
-          </div>
-
-          <div className="mt-4">
-            <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Tag Filter</label>
-            <select
-              value={dashboardTagFilter}
-              onChange={(e) => setDashboardTagFilter(e.target.value)}
-              className="mt-1 h-11 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none"
-            >
-              <option value="">All unscheduled contacts</option>
-              {tagOptions.map((tag) => (
-                <option key={tag.id} value={tag.name}>{tag.name}</option>
-              ))}
-            </select>
+            Customers tagged as needing follow-up.
           </div>
 
           <div className="mt-5 space-y-3">
-            {contactsWithoutUpcomingBooking.length ? (
-              contactsWithoutUpcomingBooking.map((contact) => (
+            {followUpQueue.length ? (
+              followUpQueue.map((contact) => (
                 <div key={contact.id} className="rounded-2xl border border-slate-200 p-4">
                   <div className="text-sm font-semibold text-slate-900">{contact.name}</div>
+                  <div className="mt-1 text-xs text-slate-500">{contact.status || "New Lead"}</div>
                   <div className="mt-1 text-xs text-slate-500">{contact.phone || contact.email || "No contact detail"}</div>
                   <div className="mt-1 text-xs text-slate-500">{contact.address || "No address"}</div>
-                  <div className="mt-2 text-xs text-slate-600">
-                    Tags: {Array.isArray(contact.tags) && contact.tags.length ? contact.tags.join(", ") : "None"}
-                  </div>
                 </div>
               ))
             ) : (
               <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-500">
-                No matching unscheduled contacts.
+                No customers currently marked for follow-up.
               </div>
             )}
           </div>

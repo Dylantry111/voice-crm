@@ -1,89 +1,26 @@
 import React, { useState } from "react";
+import { DURATION_OPTIONS, FIELD_LIMITS } from "../lib/constants";
 
-const DURATION_OPTIONS = Array.from({ length: 16 }, (_, i) => (i + 1) * 30);
-
-function SimpleOptionList({ title, description, options, placeholder, onAdd, onRemove, onSave }) {
+function StatusList({ options, onAdd, onEdit }) {
   const [value, setValue] = useState("");
-
   return (
     <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="text-lg font-semibold">{title}</div>
-      <div className="mt-1 text-sm text-slate-500">{description}</div>
+      <div className="text-lg font-semibold">Status Options</div>
+      <div className="mt-1 text-sm text-slate-500">Used to track where each client is in your workflow.</div>
 
       <div className="mt-4 flex flex-wrap gap-2">
         <input
           value={value}
+          maxLength={FIELD_LIMITS.shortName}
           onChange={(e) => setValue(e.target.value)}
-          placeholder={placeholder}
-          className="h-11 min-w-[160px] flex-1 rounded-2xl border border-slate-200 px-4 text-sm outline-none"
+          placeholder="New status..."
+          className="h-11 min-w-[180px] flex-1 rounded-2xl border border-slate-200 px-4 text-sm outline-none"
         />
         <button
           onClick={() => {
             if (!value.trim()) return;
             onAdd(value.trim());
             setValue("");
-          }}
-          className="shrink-0 rounded-2xl bg-slate-900 px-4 py-2 text-sm font-medium text-white"
-        >
-          Add
-        </button>
-      </div>
-
-      <div className="mt-4 space-y-2">
-        {options.map((item) => (
-          <div key={item.id} className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200 px-4 py-3">
-            <div className="min-w-0 text-sm font-medium text-slate-800">{item.name}</div>
-            <button
-              onClick={() => {
-                const ok = window.confirm(`Remove ${item.name}?`);
-                if (ok) onRemove(item.id);
-              }}
-              className="shrink-0 text-sm font-medium text-rose-600"
-            >
-              Remove
-            </button>
-          </div>
-        ))}
-      </div>
-
-      <button onClick={onSave} className="mt-4 rounded-2xl bg-slate-900 px-4 py-2 text-sm font-medium text-white">
-        Save {title}
-      </button>
-    </div>
-  );
-}
-
-function EventTypeList({ options, onAdd, onRemove, onUpdateMinutes, onSave }) {
-  const [name, setName] = useState("");
-  const [minutes, setMinutes] = useState("60");
-
-  return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="text-lg font-semibold">Event Types</div>
-      <div className="mt-1 text-sm text-slate-500">Defines booking types and their default durations.</div>
-
-      <div className="mt-4 grid gap-2 md:grid-cols-[1fr_160px_auto]">
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          placeholder="New event type..."
-          className="h-11 rounded-2xl border border-slate-200 px-4 text-sm outline-none"
-        />
-        <select
-          value={minutes}
-          onChange={(e) => setMinutes(e.target.value)}
-          className="h-11 rounded-2xl border border-slate-200 px-4 text-sm outline-none"
-        >
-          {DURATION_OPTIONS.map((option) => (
-            <option key={option} value={option}>{option} min</option>
-          ))}
-        </select>
-        <button
-          onClick={() => {
-            if (!name.trim()) return;
-            onAdd(name.trim(), Number(minutes));
-            setName("");
-            setMinutes("60");
           }}
           className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-medium text-white"
         >
@@ -93,33 +30,116 @@ function EventTypeList({ options, onAdd, onRemove, onUpdateMinutes, onSave }) {
 
       <div className="mt-4 space-y-2">
         {options.map((item) => (
-          <div key={item.id} className="grid items-center gap-3 rounded-2xl border border-slate-200 px-4 py-3 md:grid-cols-[1fr_160px_auto]">
-            <div className="min-w-0 text-sm font-medium text-slate-800">{item.name}</div>
-            <select
-              value={String(item.minutes || 60)}
-              onChange={(e) => onUpdateMinutes(item.id, Number(e.target.value))}
-              className="h-10 rounded-2xl border border-slate-200 px-3 text-sm outline-none"
-            >
-              {DURATION_OPTIONS.map((option) => (
-                <option key={option} value={option}>{option} min</option>
-              ))}
-            </select>
-            <button
-              onClick={() => {
-                const ok = window.confirm(`Remove ${item.name}?`);
-                if (ok) onRemove(item.id);
-              }}
-              className="text-sm font-medium text-rose-600"
-            >
+          <div key={item.id} className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-200 px-4 py-3">
+            <div className="min-w-[140px] flex-1 text-sm font-medium text-slate-800">{item.name}</div>
+            <button onClick={() => onEdit(item.id)} className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-800">
+              Edit
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TagList({ options, onAdd, onRemove }) {
+  const [value, setValue] = useState("");
+  return (
+    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="text-lg font-semibold">Tag Options</div>
+      <div className="mt-1 text-sm text-slate-500">Used to label and filter clients.</div>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        <input
+          value={value}
+          maxLength={FIELD_LIMITS.shortName}
+          onChange={(e) => setValue(e.target.value)}
+          placeholder="New tag..."
+          className="h-11 min-w-[180px] flex-1 rounded-2xl border border-slate-200 px-4 text-sm outline-none"
+        />
+        <button
+          onClick={() => {
+            if (!value.trim()) return;
+            onAdd(value.trim());
+            setValue("");
+          }}
+          className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-medium text-white"
+        >
+          Add
+        </button>
+      </div>
+
+      <div className="mt-4 space-y-2">
+        {options.map((item) => (
+          <div key={item.id} className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-200 px-4 py-3">
+            <div className="min-w-[140px] flex-1 text-sm font-medium text-slate-800">{item.name}</div>
+            <button onClick={() => onRemove(item.id)} className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-700">
               Remove
             </button>
           </div>
         ))}
       </div>
+    </div>
+  );
+}
 
-      <button onClick={onSave} className="mt-4 rounded-2xl bg-slate-900 px-4 py-2 text-sm font-medium text-white">
-        Save Event Types
-      </button>
+function EventTypesList({ options, onAdd, onEdit, onRemove }) {
+  const [name, setName] = useState("");
+  const [minutes, setMinutes] = useState("60");
+
+  const labelFor = (mins) => DURATION_OPTIONS.find((x) => x.value === mins)?.label || `${mins} min`;
+
+  return (
+    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="text-lg font-semibold">Event Types</div>
+      <div className="mt-1 text-sm text-slate-500">Defines booking types and default durations.</div>
+
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <input
+          value={name}
+          maxLength={FIELD_LIMITS.shortName}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="New event type..."
+          className="h-11 min-w-[180px] flex-1 rounded-2xl border border-slate-200 px-4 text-sm outline-none"
+        />
+        <select
+          value={minutes}
+          onChange={(e) => setMinutes(e.target.value)}
+          className="h-11 w-[132px] shrink-0 rounded-2xl border border-slate-200 px-3 text-sm outline-none"
+        >
+          {DURATION_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>{option.label}</option>
+          ))}
+        </select>
+        <button
+          onClick={() => {
+            if (!name.trim()) return;
+            onAdd(name.trim(), Number(minutes));
+            setName("");
+            setMinutes("60");
+          }}
+          className="h-11 shrink-0 rounded-2xl bg-slate-900 px-4 text-sm font-medium text-white"
+        >
+          Add
+        </button>
+      </div>
+
+      <div className="mt-4 space-y-2">
+        {options.map((item) => (
+          <div key={item.id} className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 px-4 py-3">
+            <div className="min-w-[160px] flex-1 truncate text-sm font-medium text-slate-800">{item.name}</div>
+            <div className="w-[132px] shrink-0 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
+              {labelFor(item.minutes)}
+            </div>
+            <button onClick={() => onEdit(item.id)} className="h-10 shrink-0 rounded-xl border border-slate-300 bg-white px-3 text-xs font-medium text-slate-800">
+              Edit
+            </button>
+            <button onClick={() => onRemove(item.id)} className="h-10 shrink-0 rounded-xl border border-rose-200 bg-rose-50 px-3 text-xs font-medium text-rose-700">
+              Remove
+            </button>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -127,26 +147,25 @@ function EventTypeList({ options, onAdd, onRemove, onUpdateMinutes, onSave }) {
 function SavedLocationsList({ locations, onAdd, onRemove }) {
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
-
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm xl:col-span-3">
+    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="text-lg font-semibold">Saved Locations</div>
-      <div className="mt-1 text-sm text-slate-500">
-        Use named addresses like Office, Cafe, or Meeting Room as quick booking locations.
-      </div>
+      <div className="mt-1 text-sm text-slate-500">Reusable meeting or service locations.</div>
 
-      <div className="mt-4 grid gap-2 md:grid-cols-[220px_1fr_auto]">
+      <div className="mt-4 space-y-2">
         <input
           value={name}
+          maxLength={FIELD_LIMITS.locationName}
           onChange={(e) => setName(e.target.value)}
           placeholder="Location name"
-          className="h-11 rounded-2xl border border-slate-200 px-4 text-sm outline-none"
+          className="h-11 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none"
         />
         <input
           value={address}
+          maxLength={FIELD_LIMITS.address}
           onChange={(e) => setAddress(e.target.value)}
-          placeholder="Detailed address"
-          className="h-11 rounded-2xl border border-slate-200 px-4 text-sm outline-none"
+          placeholder="Full address"
+          className="h-11 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none"
         />
         <button
           onClick={() => {
@@ -157,32 +176,68 @@ function SavedLocationsList({ locations, onAdd, onRemove }) {
           }}
           className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-medium text-white"
         >
-          Add
+          Add Location
         </button>
       </div>
 
       <div className="mt-4 space-y-2">
-        {locations.length ? locations.map((item) => (
-          <div key={item.id} className="flex flex-col gap-3 rounded-2xl border border-slate-200 px-4 py-3 md:flex-row md:items-center md:justify-between">
-            <div className="min-w-0">
-              <div className="text-sm font-semibold text-slate-900">{item.name}</div>
+        {locations.map((item) => (
+          <div key={item.id} className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 px-4 py-3">
+            <div className="min-w-[140px] flex-1">
+              <div className="text-sm font-medium text-slate-800">{item.name}</div>
               <div className="text-xs text-slate-500">{item.address}</div>
             </div>
-            <button
-              onClick={() => {
-                const ok = window.confirm(`Remove saved location "${item.name}"?`);
-                if (ok) onRemove(item.id);
-              }}
-              className="shrink-0 text-sm font-medium text-rose-600"
-            >
+            <button onClick={() => onRemove(item.id)} className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-700">
               Remove
             </button>
           </div>
-        )) : (
-          <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-500">
-            No saved locations yet.
-          </div>
-        )}
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function EditDialog({ isOpen, title, initialName, initialMinutes, showDuration, onClose, onSave }) {
+  const [name, setName] = useState(initialName || "");
+  const [minutes, setMinutes] = useState(String(initialMinutes || 60));
+
+  React.useEffect(() => {
+    setName(initialName || "");
+    setMinutes(String(initialMinutes || 60));
+  }, [initialName, initialMinutes]);
+
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/40 p-4">
+      <div className="w-full max-w-md rounded-3xl bg-white p-5 shadow-2xl">
+        <div className="text-lg font-semibold">{title}</div>
+        <div className="mt-4 space-y-3">
+          <input
+            value={name}
+            maxLength={FIELD_LIMITS.shortName}
+            onChange={(e) => setName(e.target.value)}
+            className="h-11 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none"
+          />
+          {showDuration ? (
+            <select
+              value={minutes}
+              onChange={(e) => setMinutes(e.target.value)}
+              className="h-11 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none"
+            >
+              {DURATION_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>{option.label}</option>
+              ))}
+            </select>
+          ) : null}
+        </div>
+        <div className="mt-4 flex gap-2">
+          <button onClick={() => onSave(name.trim(), Number(minutes))} className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-medium text-white">
+            Save
+          </button>
+          <button onClick={onClose} className="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-800">
+            Cancel
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -195,23 +250,26 @@ export default function SettingsPage({
   settingsMode,
   savedLocations,
   onAddStatus,
-  onRemoveStatus,
+  onEditStatus,
   onAddTag,
   onRemoveTag,
   onAddEventType,
+  onEditEventType,
   onRemoveEventType,
-  onUpdateEventTypeMinutes,
   onAddSavedLocation,
   onRemoveSavedLocation,
   onSaveSettings,
   onResetDefaults,
 }) {
+  const [statusEdit, setStatusEdit] = useState(null);
+  const [eventEdit, setEventEdit] = useState(null);
+
   return (
     <section className="space-y-6">
       <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="text-lg font-semibold">Settings</div>
         <div className="mt-2 text-sm text-slate-500">
-          Manage statuses, tags, event types, and reusable booking locations.
+          Manage your workflow defaults and reusable booking data here.
         </div>
         <div className="mt-1 text-xs text-slate-500">
           Current save mode: <span className="font-medium text-slate-900">{settingsMode}</span>
@@ -222,41 +280,39 @@ export default function SettingsPage({
         </div>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-3">
-        <SimpleOptionList
-          title="Status Options"
-          description="Used to track where each client is in your workflow."
-          options={statusOptions}
-          placeholder="New status..."
-          onAdd={onAddStatus}
-          onRemove={onRemoveStatus}
-          onSave={onSaveSettings}
-        />
-
-        <SimpleOptionList
-          title="Tag Options"
-          description="Used to label and filter clients."
-          options={tagOptions}
-          placeholder="New tag..."
-          onAdd={onAddTag}
-          onRemove={onRemoveTag}
-          onSave={onSaveSettings}
-        />
-
-        <EventTypeList
-          options={eventTypes}
-          onAdd={onAddEventType}
-          onRemove={onRemoveEventType}
-          onUpdateMinutes={onUpdateEventTypeMinutes}
-          onSave={onSaveSettings}
-        />
-
-        <SavedLocationsList
-          locations={savedLocations}
-          onAdd={onAddSavedLocation}
-          onRemove={onRemoveSavedLocation}
-        />
+      <div className="grid gap-6 xl:grid-cols-2">
+        <StatusList options={statusOptions} onAdd={onAddStatus} onEdit={setStatusEdit} />
+        <TagList options={tagOptions} onAdd={onAddTag} onRemove={onRemoveTag} />
+        <EventTypesList options={eventTypes} onAdd={onAddEventType} onEdit={setEventEdit} onRemove={onRemoveEventType} />
+        <SavedLocationsList locations={savedLocations} onAdd={onAddSavedLocation} onRemove={onRemoveSavedLocation} />
       </div>
+
+      <EditDialog
+        isOpen={Boolean(statusEdit)}
+        title="Edit Status"
+        initialName={statusOptions.find((x) => x.id === statusEdit)?.name || ""}
+        showDuration={false}
+        onClose={() => setStatusEdit(null)}
+        onSave={(name) => {
+          if (!statusEdit || !name) return;
+          onEditStatus(statusEdit, name);
+          setStatusEdit(null);
+        }}
+      />
+
+      <EditDialog
+        isOpen={Boolean(eventEdit)}
+        title="Edit Event Type"
+        initialName={eventTypes.find((x) => x.id === eventEdit)?.name || ""}
+        initialMinutes={eventTypes.find((x) => x.id === eventEdit)?.minutes || 60}
+        showDuration={true}
+        onClose={() => setEventEdit(null)}
+        onSave={(name, minutes) => {
+          if (!eventEdit || !name) return;
+          onEditEventType(eventEdit, name, minutes);
+          setEventEdit(null);
+        }}
+      />
     </section>
   );
 }

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Briefcase } from "lucide-react";
-import { ALL_TIME_SLOTS, DEFAULT_EVENT_TYPES, DEFAULT_STATUS_OPTIONS, DEFAULT_TAG_OPTIONS } from "./lib/constants";
+import { ALL_TIME_SLOTS, DEFAULT_EVENT_TYPES, DEFAULT_STATUS_OPTIONS, DEFAULT_TAG_OPTIONS, FIELD_LIMITS } from "./lib/constants";
 import { formatDateInputValue, formatDateKey, slotToDateRange } from "./lib/dateUtils";
 import { smartFill, runSelfTests } from "./lib/parsers/contactParser";
 import { buildDuplicateMessage, findDuplicateContacts } from "./lib/parsers/duplicateChecker";
@@ -261,12 +261,12 @@ export default function App() {
 
     const newContact = await createContact({
       user_id: user.id,
-      name: draft.name || "New Contact",
-      phone: draft.phone || "",
-      email: draft.email || "",
-      address: draft.address || "",
-      requirement: draft.requirement || "General enquiry",
-      notes: draft.notes || voiceInput,
+      name: (draft.name || "New Contact").slice(0, FIELD_LIMITS.contactName),
+      phone: (draft.phone || "").slice(0, FIELD_LIMITS.phone),
+      email: (draft.email || "").slice(0, FIELD_LIMITS.email),
+      address: (draft.address || "").slice(0, FIELD_LIMITS.address),
+      requirement: (draft.requirement || "General enquiry").slice(0, FIELD_LIMITS.requirement),
+      notes: (draft.notes || voiceInput).slice(0, FIELD_LIMITS.notes),
       status: "New Lead",
       tags: [],
     });
@@ -498,15 +498,16 @@ export default function App() {
   }
 
   function addStatus(name) {
-    setStatusOptions((prev) => [...prev, { id: crypto.randomUUID(), name, color: "bg-slate-100 text-slate-700" }]);
+    setStatusOptions((prev) => [...prev, { id: crypto.randomUUID(), name: name.slice(0, FIELD_LIMITS.shortName), color: "bg-slate-100 text-slate-700" }]);
   }
 
-  function removeStatus(id) {
-    setStatusOptions((prev) => prev.filter((x) => x.id !== id));
+  function editStatus(id, name) {
+    setStatusOptions((prev) => prev.map((x) => (x.id === id ? { ...x, name: name.slice(0, FIELD_LIMITS.shortName) } : x)));
   }
 
+  
   function addTag(name) {
-    setTagOptions((prev) => [...prev, { id: crypto.randomUUID(), name, color: "bg-slate-100 text-slate-700" }]);
+    setTagOptions((prev) => [...prev, { id: crypto.randomUUID(), name: name.slice(0, FIELD_LIMITS.shortName), color: "bg-slate-100 text-slate-700" }]);
   }
 
   function removeTag(id) {
@@ -514,15 +515,15 @@ export default function App() {
   }
 
   function addEventType(name, minutes = 60) {
-    setEventTypes((prev) => [...prev, { id: crypto.randomUUID(), name, minutes, color: "bg-slate-900 text-white" }]);
+    setEventTypes((prev) => [...prev, { id: crypto.randomUUID(), name: name.slice(0, FIELD_LIMITS.shortName), minutes, color: "bg-slate-900 text-white" }]);
   }
 
   function removeEventType(id) {
     setEventTypes((prev) => prev.filter((x) => x.id !== id));
   }
 
-  function updateEventTypeMinutes(id, minutes) {
-    setEventTypes((prev) => prev.map((x) => (x.id === id ? { ...x, minutes } : x)));
+  function editEventType(id, name, minutes) {
+    setEventTypes((prev) => prev.map((x) => (x.id === id ? { ...x, name: name.slice(0, FIELD_LIMITS.shortName), minutes } : x)));
   }
 
   async function handleSaveSettings() {
@@ -625,7 +626,6 @@ export default function App() {
               <DashboardPage
                 contacts={contacts}
                 bookings={bookings}
-                tagOptions={tagOptions}
                 intakeShare={{
                   isOpen: intakeShareOpen,
                   isLoading: intakeShareLoading,
@@ -725,12 +725,12 @@ export default function App() {
                 settingsMode={settingsMode}
                 savedLocations={savedLocations}
                 onAddStatus={addStatus}
-                onRemoveStatus={removeStatus}
+                onEditStatus={editStatus}
                 onAddTag={addTag}
                 onRemoveTag={removeTag}
                 onAddEventType={addEventType}
+                onEditEventType={editEventType}
                 onRemoveEventType={removeEventType}
-                onUpdateEventTypeMinutes={updateEventTypeMinutes}
                 onAddSavedLocation={handleAddSavedLocation}
                 onRemoveSavedLocation={handleRemoveSavedLocation}
                 onSaveSettings={handleSaveSettings}

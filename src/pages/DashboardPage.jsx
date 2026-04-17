@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useMemo, useState } from "react";
 import { formatSlotTimeRange } from "../lib/dateUtils";
 
 function SmallStat({ label, value }) {
@@ -26,23 +26,37 @@ function weekdayLabel(dateValue) {
   });
 }
 
-export default function DashboardPage({ contacts, bookings, intakeShare }) {
-  const upcomingBookings = bookings
-    .filter((booking) => withinNext7Days(booking.start_time))
-    .sort((a, b) => new Date(a.start_time) - new Date(b.start_time))
-    .map((booking) => {
-      const contact = contacts.find((c) => c.id === booking.contact_id);
-      return {
-        ...booking,
-        contactName: contact?.name || "Booked Contact",
-        address: booking.location_address || contact?.address || "No address",
-      };
-    });
+export default function DashboardPage({
+  contacts,
+  bookings,
+  intakeShare,
+  onOpenContact,
+  onEditBooking,
+  onDeleteBooking,
+}) {
+  const [selectedBookingId, setSelectedBookingId] = useState(null);
+  const [selectedContactId, setSelectedContactId] = useState(null);
 
-  const followUpQueue = contacts.filter((contact) => {
-    const tags = Array.isArray(contact.tags) ? contact.tags : [];
-    return tags.includes("Follow-up Needed");
-  });
+  const upcomingBookings = useMemo(() => (
+    bookings
+      .filter((booking) => withinNext7Days(booking.start_time))
+      .sort((a, b) => new Date(a.start_time) - new Date(b.start_time))
+      .map((booking) => {
+        const contact = contacts.find((c) => c.id === booking.contact_id);
+        return {
+          ...booking,
+          contactName: contact?.name || "Booked Contact",
+          address: booking.location_address || contact?.address || "No address",
+        };
+      })
+  ), [bookings, contacts]);
+
+  const followUpQueue = useMemo(() => (
+    contacts.filter((contact) => {
+      const tags = Array.isArray(contact.tags) ? contact.tags : [];
+      return tags.includes("Follow-up Needed");
+    })
+  ), [contacts]);
 
   return (
     <section className="space-y-5 md:space-y-6">
@@ -105,15 +119,41 @@ export default function DashboardPage({ contacts, bookings, intakeShare }) {
 
           <div className="mt-5 space-y-3">
             {upcomingBookings.length ? (
-              upcomingBookings.map((item) => (
-                <div key={item.id} className="rounded-2xl border border-slate-200 p-4">
-                  <div className="text-sm font-semibold text-slate-900">
-                    {weekdayLabel(item.start_time)} · {formatSlotTimeRange(item.start_time, item.end_time)}
+              upcomingBookings.map((item) => {
+                const active = selectedBookingId === item.id;
+                return (
+                  <div
+                    key={item.id}
+                    className={`rounded-2xl border p-4 transition ${
+                      active ? "border-slate-900 bg-slate-100" : "border-slate-200 bg-white"
+                    }`}
+                  >
+                    <button onClick={() => setSelectedBookingId(item.id)} className="w-full text-left">
+                      <div className="text-sm font-semibold text-slate-900">
+                        {weekdayLabel(item.start_time)} · {formatSlotTimeRange(item.start_time, item.end_time)}
+                      </div>
+                      <div className="mt-1 text-sm text-slate-700">{item.event_type} · {item.contactName}</div>
+                      <div className="mt-1 text-xs text-slate-500">{item.address}</div>
+                    </button>
+                    {active ? (
+                      <div className="mt-3 flex gap-2">
+                        <button
+                          onClick={() => onEditBooking(item)}
+                          className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-800"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => onDeleteBooking(item.id)}
+                          className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-700"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    ) : null}
                   </div>
-                  <div className="mt-1 text-sm text-slate-700">{item.event_type} · {item.contactName}</div>
-                  <div className="mt-1 text-xs text-slate-500">{item.address}</div>
-                </div>
-              ))
+                );
+              })
             ) : (
               <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-500">
                 No bookings scheduled in the next 7 days.
@@ -130,14 +170,34 @@ export default function DashboardPage({ contacts, bookings, intakeShare }) {
 
           <div className="mt-5 space-y-3">
             {followUpQueue.length ? (
-              followUpQueue.map((contact) => (
-                <div key={contact.id} className="rounded-2xl border border-slate-200 p-4">
-                  <div className="text-sm font-semibold text-slate-900">{contact.name}</div>
-                  <div className="mt-1 text-xs text-slate-500">{contact.status || "New Lead"}</div>
-                  <div className="mt-1 text-xs text-slate-500">{contact.phone || contact.email || "No contact detail"}</div>
-                  <div className="mt-1 text-xs text-slate-500">{contact.address || "No address"}</div>
-                </div>
-              ))
+              followUpQueue.map((contact) => {
+                const active = selectedContactId === contact.id;
+                return (
+                  <div
+                    key={contact.id}
+                    className={`rounded-2xl border p-4 transition ${
+                      active ? "border-slate-900 bg-slate-100" : "border-slate-200 bg-white"
+                    }`}
+                  >
+                    <button onClick={() => setSelectedContactId(contact.id)} className="w-full text-left">
+                      <div className="text-sm font-semibold text-slate-900">{contact.name}</div>
+                      <div className="mt-1 text-xs text-slate-500">{contact.status || "New Lead"}</div>
+                      <div className="mt-1 text-xs text-slate-500">{contact.phone || contact.email || "No contact detail"}</div>
+                      <div className="mt-1 text-xs text-slate-500">{contact.address || "No address"}</div>
+                    </button>
+                    {active ? (
+                      <div className="mt-3 flex gap-2">
+                        <button
+                          onClick={() => onOpenContact(contact)}
+                          className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-800"
+                        >
+                          Open
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })
             ) : (
               <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-500">
                 No customers currently marked for follow-up.

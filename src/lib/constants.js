@@ -18,29 +18,40 @@ export const DEFAULT_EVENT_TYPES = [
   { id: "site-visit", name: "Site Visit", minutes: 60, color: "bg-indigo-600 text-white" },
 ];
 
+export const DURATION_OPTIONS = [
+  { label: "30 min", value: 30 },
+  { label: "1 hour", value: 60 },
+  { label: "1.5 hours", value: 90 },
+  { label: "2 hours", value: 120 },
+  { label: "2.5 hours", value: 150 },
+  { label: "3 hours", value: 180 },
+  { label: "4 hours", value: 240 },
+  { label: "5 hours", value: 300 },
+  { label: "6 hours", value: 360 },
+  { label: "7 hours", value: 420 },
+  { label: "8 hours", value: 480 },
+];
+
 export const ALL_TIME_SLOTS = [
-  "08:00 - 08:30",
-  "08:30 - 09:00",
-  "09:00 - 09:30",
-  "09:30 - 10:00",
-  "10:00 - 10:30",
-  "10:30 - 11:00",
-  "11:00 - 11:30",
-  "11:30 - 12:00",
-  "12:00 - 12:30",
-  "12:30 - 13:00",
-  "13:00 - 13:30",
-  "13:30 - 14:00",
-  "14:00 - 14:30",
-  "14:30 - 15:00",
-  "15:00 - 15:30",
-  "15:30 - 16:00",
-  "16:00 - 16:30",
-  "16:30 - 17:00",
+  "08:00 - 08:30","08:30 - 09:00","09:00 - 09:30","09:30 - 10:00","10:00 - 10:30",
+  "10:30 - 11:00","11:00 - 11:30","11:30 - 12:00","12:00 - 12:30","12:30 - 13:00",
+  "13:00 - 13:30","13:30 - 14:00","14:00 - 14:30","14:30 - 15:00","15:00 - 15:30",
+  "15:30 - 16:00","16:00 - 16:30","16:30 - 17:00",
 ];
 
 export const STORAGE_KEYS = {
   statusOptions: "crm_status_options_v2",
   tagOptions: "crm_tag_options_v2",
   eventTypes: "crm_event_types_v2",
+};
+
+export const FIELD_LIMITS = {
+  contactName: 50,
+  phone: 20,
+  email: 100,
+  address: 200,
+  shortName: 30,
+  locationName: 40,
+  requirement: 200,
+  notes: 1000,
 };

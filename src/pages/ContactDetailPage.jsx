@@ -1,3 +1,4 @@
+import { FIELD_LIMITS } from "../lib/constants";
 import React from "react";
 import { ArrowLeft, Phone, MessageCircle, MapPin, Trash2, CalendarPlus } from "lucide-react";
 import { StatusBadge } from "../components/common/Badges";
@@ -74,15 +75,15 @@ export default function ContactDetailPage({
             <div className="mt-4 grid gap-4 md:grid-cols-2">
               <div>
                 <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Name</label>
-                <input value={contact.name || ""} onChange={(e) => onChangeField("name", e.target.value)} className="mt-1 h-11 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none" />
+                <input maxLength={FIELD_LIMITS.contactName} value={contact.name || ""} onChange={(e) => onChangeField("name", e.target.value)} className="mt-1 h-11 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none" />
               </div>
               <div>
                 <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Phone</label>
-                <input value={contact.phone || ""} onChange={(e) => onChangeField("phone", e.target.value)} className="mt-1 h-11 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none" />
+                <input maxLength={FIELD_LIMITS.phone} value={contact.phone || ""} onChange={(e) => onChangeField("phone", e.target.value)} className="mt-1 h-11 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none" />
               </div>
               <div>
                 <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Email</label>
-                <input value={contact.email || ""} onChange={(e) => onChangeField("email", e.target.value)} className="mt-1 h-11 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none" />
+                <input maxLength={FIELD_LIMITS.email} value={contact.email || ""} onChange={(e) => onChangeField("email", e.target.value)} className="mt-1 h-11 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none" />
               </div>
               <div>
                 <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Status</label>
@@ -94,15 +95,15 @@ export default function ContactDetailPage({
               </div>
               <div className="md:col-span-2">
                 <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Address</label>
-                <input value={contact.address || ""} onChange={(e) => onChangeField("address", e.target.value)} className="mt-1 h-11 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none" />
+                <input maxLength={FIELD_LIMITS.address} value={contact.address || ""} onChange={(e) => onChangeField("address", e.target.value)} className="mt-1 h-11 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none" />
               </div>
               <div className="md:col-span-2">
                 <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Requirement</label>
-                <input value={contact.requirement || ""} onChange={(e) => onChangeField("requirement", e.target.value)} className="mt-1 h-11 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none" />
+                <input maxLength={FIELD_LIMITS.requirement} value={contact.requirement || ""} onChange={(e) => onChangeField("requirement", e.target.value)} className="mt-1 h-11 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none" />
               </div>
               <div className="md:col-span-2">
                 <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Notes</label>
-                <textarea value={contact.notes || ""} onChange={(e) => onChangeField("notes", e.target.value)} className="mt-1 min-h-[120px] w-full rounded-2xl border border-slate-200 p-4 text-sm outline-none" />
+                <textarea maxLength={FIELD_LIMITS.notes} value={contact.notes || ""} onChange={(e) => onChangeField("notes", e.target.value)} className="mt-1 min-h-[120px] w-full rounded-2xl border border-slate-200 p-4 text-sm outline-none" />
               </div>
             </div>
 

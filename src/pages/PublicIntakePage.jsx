@@ -1,3 +1,4 @@
+import { FIELD_LIMITS } from "../lib/constants";
 import React, { useEffect, useMemo, useState } from "react";
 import { fetchPublicIntakeProfile, submitPublicIntake } from "../services/publicIntakeService";
 
@@ -108,6 +109,7 @@ export default function PublicIntakePage({ intakeToken }) {
               <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Name</label>
               <input
                 required
+                maxLength={FIELD_LIMITS.contactName}
                 value={form.name}
                 onChange={(e) => setForm({ ...form, name: e.target.value })}
                 className="mt-1 h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none"
@@ -117,6 +119,7 @@ export default function PublicIntakePage({ intakeToken }) {
             <div>
               <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Phone</label>
               <input
+                maxLength={FIELD_LIMITS.phone}
                 value={form.phone}
                 onChange={(e) => setForm({ ...form, phone: e.target.value })}
                 className="mt-1 h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none"
@@ -127,6 +130,7 @@ export default function PublicIntakePage({ intakeToken }) {
               <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Email</label>
               <input
                 type="email"
+                maxLength={FIELD_LIMITS.email}
                 value={form.email}
                 onChange={(e) => setForm({ ...form, email: e.target.value })}
                 className="mt-1 h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none"
@@ -136,6 +140,7 @@ export default function PublicIntakePage({ intakeToken }) {
             <div>
               <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Address</label>
               <input
+                maxLength={FIELD_LIMITS.address}
                 value={form.address}
                 onChange={(e) => setForm({ ...form, address: e.target.value })}
                 className="mt-1 h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none"
@@ -148,6 +153,7 @@ export default function PublicIntakePage({ intakeToken }) {
                 {introText}
               </div>
               <textarea
+                maxLength={FIELD_LIMITS.notes}
                 value={form.notes}
                 onChange={(e) => setForm({ ...form, notes: e.target.value })}
                 className="min-h-[140px] w-full rounded-2xl border border-slate-200 p-4 text-sm outline-none"

@@ -1,3 +1,4 @@
+import { FIELD_LIMITS } from "../lib/constants";
 import React from "react";
 import { Mic, Sparkles, CheckCircle2, Save, CalendarPlus, AlertTriangle } from "lucide-react";
 import DayTimeline from "../components/bookings/DayTimeline";
@@ -95,6 +96,7 @@ export default function CapturePage({
               <div key={key}>
                 <label className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</label>
                 <input
+                  maxLength={key === "name" ? FIELD_LIMITS.contactName : key === "phone" ? FIELD_LIMITS.phone : FIELD_LIMITS.email}
                   value={draft[key] || ""}
                   onChange={(e) => setDraft({ ...draft, [key]: e.target.value })}
                   className="mt-1 h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none"
@@ -104,6 +106,7 @@ export default function CapturePage({
             <div className="md:col-span-2">
               <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Address</label>
               <input
+                maxLength={FIELD_LIMITS.address}
                 value={draft.address || ""}
                 onChange={(e) => setDraft({ ...draft, address: e.target.value })}
                 className="mt-1 h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none"
@@ -112,6 +115,7 @@ export default function CapturePage({
             <div className="md:col-span-2">
               <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Requirement</label>
               <input
+                maxLength={FIELD_LIMITS.requirement}
                 value={draft.requirement || ""}
                 onChange={(e) => setDraft({ ...draft, requirement: e.target.value })}
                 className="mt-1 h-12 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none"
@@ -120,6 +124,7 @@ export default function CapturePage({
             <div className="md:col-span-2">
               <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Notes</label>
               <textarea
+                maxLength={FIELD_LIMITS.notes}
                 value={draft.notes || ""}
                 onChange={(e) => setDraft({ ...draft, notes: e.target.value })}
                 className="mt-1 min-h-[120px] w-full rounded-2xl border border-slate-200 p-4 text-sm outline-none"

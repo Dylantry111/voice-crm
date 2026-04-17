@@ -13,10 +13,12 @@ import ContactDetailPage from "./pages/ContactDetailPage";
 import CalendarPage from "./pages/CalendarPage";
 import SettingsPage from "./pages/SettingsPage";
 import ExportPage from "./pages/ExportPage";
+import BookingEditor from "./components/bookings/BookingEditor";
 import { createContact, deleteContactCascade, fetchContacts, tryUpdateContactTags, updateContact } from "./services/contactsService";
 import { createBooking, deleteBooking, fetchBookings, updateBooking } from "./services/bookingsService";
 import { loadSettings, saveSettings } from "./services/settingsService";
 import { fetchOrCreateMyIntakeProfile } from "./services/publicIntakeService";
+import { createSavedLocation, deleteSavedLocation, fetchSavedLocations } from "./services/savedLocationsService";
 import { supabase } from "./lib/supabase";
 
 export default function App() {
@@ -27,6 +29,7 @@ export default function App() {
   const [view, setView] = useState("dashboard");
   const [contacts, setContacts] = useState([]);
   const [bookings, setBookings] = useState([]);
+  const [savedLocations, setSavedLocations] = useState([]);
   const [query, setQuery] = useState("");
   const [loadingContacts, setLoadingContacts] = useState(true);
 
@@ -34,7 +37,6 @@ export default function App() {
   const [tagOptions, setTagOptions] = useState(DEFAULT_TAG_OPTIONS);
   const [eventTypes, setEventTypes] = useState(DEFAULT_EVENT_TYPES);
   const [settingsMode, setSettingsMode] = useState("browser_local_storage");
-  const [currentUserEmail, setCurrentUserEmail] = useState("");
 
   const [voiceInput, setVoiceInput] = useState(
     "Tom phone 021 123 4567 email tom@test.com address 13 Preston Avenue, Mount Albert, Auckland wants living room shutters."
@@ -53,17 +55,23 @@ export default function App() {
 
   const [bookingEditorOpen, setBookingEditorOpen] = useState(false);
   const [bookingEditorMode, setBookingEditorMode] = useState("create");
+  const [bookingEditorVariant, setBookingEditorVariant] = useState("calendar-create");
   const [editingBookingId, setEditingBookingId] = useState(null);
-  const [bookingEditorScrollKey, setBookingEditorScrollKey] = useState(0);
+
   const [intakeShareOpen, setIntakeShareOpen] = useState(false);
   const [intakeShareLoading, setIntakeShareLoading] = useState(false);
   const [intakeProfile, setIntakeProfile] = useState(null);
+
   const [bookingForm, setBookingForm] = useState({
     contact_id: "",
     event_type: DEFAULT_EVENT_TYPES[0].name,
     date: formatDateInputValue(new Date()),
     slot: "",
     slotOptions: ALL_TIME_SLOTS,
+    location_source: "customer",
+    saved_location_id: "",
+    location_name: "Customer Address",
+    location_address: "",
   });
 
   useEffect(() => {
@@ -79,20 +87,21 @@ export default function App() {
   async function loadInitialData() {
     setLoadingContacts(true);
     const { data: { user } } = await supabase.auth.getUser();
-    if (user?.email) setCurrentUserEmail(user.email);
     if (!user) {
       setLoadingContacts(false);
       return;
     }
 
     try {
-      const [contactRows, bookingRows, settings] = await Promise.all([
+      const [contactRows, bookingRows, settings, savedLocationRows] = await Promise.all([
         fetchContacts(),
         fetchBookings(),
         loadSettings(),
+        fetchSavedLocations(),
       ]);
       setContacts(contactRows);
       setBookings(bookingRows);
+      setSavedLocations(savedLocationRows);
       setStatusOptions(settings.statusOptions || DEFAULT_STATUS_OPTIONS);
       setTagOptions(settings.tagOptions || DEFAULT_TAG_OPTIONS);
       setEventTypes(settings.eventTypes || DEFAULT_EVENT_TYPES);
@@ -119,26 +128,20 @@ export default function App() {
   const duplicateCheck = useMemo(() => findDuplicateContacts(draft, contacts), [draft, contacts]);
   const testsPass = runSelfTests();
 
-  function touchScrollTarget() {
-    setBookingEditorScrollKey((prev) => prev + 1);
+  const selectedCustomerForBooking =
+    contacts.find((item) => item.id === bookingForm.contact_id) ||
+    selectedContact ||
+    null;
+
+  function handleFill() {
+    setDraft((prev) => ({ ...prev, ...smartFill(voiceInput) }));
   }
 
-  function openContact(contact) {
-    setSelectedContact(contact);
-    setSelectedSlot("");
-    setSelectedBookingId(null);
-    setBookingEditorOpen(true);
-    setBookingEditorMode("create");
-    setEditingBookingId(null);
-    setBookingForm({
-      contact_id: contact.id,
-      event_type: eventTypes[0]?.name || DEFAULT_EVENT_TYPES[0].name,
-      date: formatDateKey(selectedDate),
-      slot: "",
-      slotOptions: ALL_TIME_SLOTS,
-    });
-    touchScrollTarget();
-    setView("detail");
+  function setSelectedDateByValue(dateValue) {
+    const d = new Date(dateValue);
+    d.setHours(0, 0, 0, 0);
+    setSelectedDate(d);
+    setBookingForm((curr) => ({ ...curr, date: formatDateKey(d) }));
   }
 
   function changeSelectedDate(days) {
@@ -146,8 +149,7 @@ export default function App() {
       const d = new Date(prev);
       d.setDate(d.getDate() + days);
       d.setHours(0, 0, 0, 0);
-      const key = formatDateKey(d);
-      setBookingForm((curr) => ({ ...curr, date: key }));
+      setBookingForm((curr) => ({ ...curr, date: formatDateKey(d) }));
       return d;
     });
   }
@@ -159,13 +161,89 @@ export default function App() {
     setBookingForm((curr) => ({ ...curr, date: formatDateKey(d) }));
   }
 
-  function handleFill() {
-    setDraft((prev) => ({ ...prev, ...smartFill(voiceInput) }));
+  function openContact(contact) {
+    setSelectedContact(contact);
+    setSelectedSlot("");
+    setSelectedBookingId(null);
+    setBookingEditorOpen(false);
+    setView("detail");
+  }
+
+  function closeBookingEditor() {
+    setBookingEditorOpen(false);
+    setSelectedBookingId(null);
+  }
+
+  function openCalendarCreateBooking(slot) {
+    setSelectedSlot(slot);
+    setSelectedBookingId(null);
+    setBookingEditorOpen(true);
+    setBookingEditorMode("create");
+    setBookingEditorVariant("calendar-create");
+    setEditingBookingId(null);
+    setBookingForm({
+      contact_id: "",
+      event_type: eventTypes[0]?.name || DEFAULT_EVENT_TYPES[0].name,
+      date: formatDateKey(selectedDate),
+      slot: slot || "",
+      slotOptions: ALL_TIME_SLOTS,
+      location_source: "customer",
+      saved_location_id: "",
+      location_name: "Customer Address",
+      location_address: "",
+    });
+  }
+
+  function openCustomerCreateBooking(contact, slot = "") {
+    const baseDate = formatDateKey(selectedDate);
+    setSelectedContact(contact);
+    setSelectedSlot(slot || "");
+    setSelectedBookingId(null);
+    setBookingEditorOpen(true);
+    setBookingEditorMode("create");
+    setBookingEditorVariant("customer-create");
+    setEditingBookingId(null);
+    setBookingForm({
+      contact_id: contact.id,
+      event_type: eventTypes[0]?.name || DEFAULT_EVENT_TYPES[0].name,
+      date: baseDate,
+      slot: slot || "",
+      slotOptions: ALL_TIME_SLOTS,
+      location_source: "customer",
+      saved_location_id: "",
+      location_name: "Customer Address",
+      location_address: contact.address || "",
+    });
+  }
+
+  function openEditBooking(booking) {
+    const selected = contacts.find((c) => c.id === booking.contact_id) || selectedContact || null;
+    const start = new Date(booking.start_time);
+    const slot = `${start.toLocaleTimeString("en-NZ", { hour: "2-digit", minute: "2-digit", hour12: false })} - ${new Date(start.getTime() + 30 * 60000).toLocaleTimeString("en-NZ", { hour: "2-digit", minute: "2-digit", hour12: false })}`;
+
+    setSelectedBookingId(booking.id);
+    setSelectedSlot("");
+    setSelectedDate(new Date(formatDateKey(booking.start_time)));
+    setSelectedContact(selected);
+    setBookingEditorOpen(true);
+    setBookingEditorMode("edit");
+    setBookingEditorVariant("edit");
+    setEditingBookingId(booking.id);
+    setBookingForm({
+      contact_id: booking.contact_id || "",
+      event_type: booking.event_type || eventTypes[0]?.name || DEFAULT_EVENT_TYPES[0].name,
+      date: formatDateKey(booking.start_time),
+      slot,
+      slotOptions: ALL_TIME_SLOTS,
+      location_source: booking.location_type === "saved" ? "saved" : "customer",
+      saved_location_id: "",
+      location_name: booking.location_name || (booking.location_type === "saved" ? "" : "Customer Address"),
+      location_address: booking.location_address || selected?.address || "",
+    });
   }
 
   async function persistContact() {
     const { data: { user } } = await supabase.auth.getUser();
-    if (user?.email) setCurrentUserEmail(user.email);
     if (!user) {
       alert("Please log in first.");
       return null;
@@ -201,11 +279,7 @@ export default function App() {
     try {
       const newContact = await persistContact();
       if (!newContact) return;
-      setSelectedContact(newContact);
-      setView("detail");
-      setBookingEditorOpen(false);
-      setSelectedSlot("");
-      setSelectedBookingId(null);
+      openContact(newContact);
     } catch (error) {
       console.error(error);
       alert(`Save failed: ${error.message}`);
@@ -216,19 +290,8 @@ export default function App() {
     try {
       const newContact = await persistContact();
       if (!newContact) return;
-      setSelectedContact(newContact);
-      setBookingEditorOpen(true);
-      setBookingEditorMode("create");
-      setEditingBookingId(null);
-      setBookingForm({
-        contact_id: newContact.id,
-        event_type: eventTypes[0]?.name || DEFAULT_EVENT_TYPES[0].name,
-        date: formatDateKey(selectedDate),
-        slot: selectedSlot || "",
-        slotOptions: ALL_TIME_SLOTS,
-      });
-      touchScrollTarget();
       setView("detail");
+      openCustomerCreateBooking(newContact);
     } catch (error) {
       console.error(error);
       alert(`Save failed: ${error.message}`);
@@ -257,7 +320,6 @@ export default function App() {
     const updated = { ...selectedContact, [field]: value };
     setSelectedContact(updated);
     setContacts((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
-
     try {
       const saved = await updateContact(selectedContact.id, { [field]: value });
       setSelectedContact((prev) => ({ ...prev, ...saved, tags: updated.tags }));
@@ -288,38 +350,10 @@ export default function App() {
     return end;
   }
 
-  function openCreateBookingForCurrentContact(slot = "") {
-    if (!selectedContact) return;
-    setSelectedSlot(slot);
-    setSelectedBookingId(null);
-    setBookingEditorOpen(true);
-    setBookingEditorMode("create");
-    setEditingBookingId(null);
-    setBookingForm({
-      contact_id: selectedContact.id,
-      event_type: bookingForm.event_type || eventTypes[0]?.name || DEFAULT_EVENT_TYPES[0].name,
-      date: formatDateKey(selectedDate),
-      slot: slot || "",
-      slotOptions: ALL_TIME_SLOTS,
-    });
-    touchScrollTarget();
-  }
-
   function handlePickSlot(slot) {
     setSelectedSlot(slot);
     setSelectedBookingId(null);
-
-    if (view === "detail" && selectedContact) {
-      setBookingEditorOpen(true);
-      setBookingEditorMode("create");
-      setEditingBookingId(null);
-      setBookingForm((curr) => ({
-        ...curr,
-        contact_id: selectedContact.id,
-        date: formatDateKey(selectedDate),
-        slot,
-      }));
-    }
+    setBookingForm((curr) => ({ ...curr, date: formatDateKey(selectedDate), slot }));
   }
 
   function handlePickBooking(bookingId) {
@@ -328,42 +362,7 @@ export default function App() {
   }
 
   function handleCreateBooking(slot) {
-    setSelectedSlot(slot);
-    setSelectedBookingId(null);
-
-    if (view === "detail" && selectedContact) {
-      openCreateBookingForCurrentContact(slot);
-      return;
-    }
-
-    setBookingEditorOpen(true);
-    setBookingEditorMode("create");
-    setEditingBookingId(null);
-    setBookingForm((prev) => ({
-      ...prev,
-      slot,
-      date: formatDateKey(selectedDate),
-      contact_id: prev.contact_id || selectedContact?.id || "",
-      event_type: prev.event_type || eventTypes[0]?.name || DEFAULT_EVENT_TYPES[0].name,
-      slotOptions: ALL_TIME_SLOTS,
-    }));
-    touchScrollTarget();
-  }
-
-  function handleEditBooking(booking) {
-    setSelectedBookingId(booking.id);
-    setSelectedSlot("");
-    setBookingEditorOpen(true);
-    setBookingEditorMode("edit");
-    setEditingBookingId(booking.id);
-    setBookingForm({
-      contact_id: view === "detail" && selectedContact ? selectedContact.id : (booking.contact_id || ""),
-      event_type: booking.event_type || eventTypes[0]?.name || DEFAULT_EVENT_TYPES[0].name,
-      date: formatDateKey(booking.start_time),
-      slot: `${new Date(booking.start_time).toLocaleTimeString("en-NZ", { hour: "2-digit", minute: "2-digit", hour12: false })} - ${new Date(new Date(booking.start_time).getTime() + 30 * 60000).toLocaleTimeString("en-NZ", { hour: "2-digit", minute: "2-digit", hour12: false })}`,
-      slotOptions: ALL_TIME_SLOTS,
-    });
-    touchScrollTarget();
+    openCalendarCreateBooking(slot);
   }
 
   async function handleDeleteBooking(bookingId) {
@@ -373,6 +372,7 @@ export default function App() {
       await deleteBooking(bookingId);
       setBookings((prev) => prev.filter((b) => b.id !== bookingId));
       if (selectedBookingId === bookingId) setSelectedBookingId(null);
+      setBookingEditorOpen(false);
     } catch (error) {
       console.error(error);
       alert(`Delete booking failed: ${error.message}`);
@@ -380,15 +380,30 @@ export default function App() {
   }
 
   function updateBookingForm(field, value) {
-    setBookingForm((prev) => ({ ...prev, [field]: value }));
+    setBookingForm((prev) => {
+      const next = { ...prev, [field]: value };
+      if (field === "contact_id") {
+        const customer = contacts.find((c) => c.id === value);
+        if (next.location_source === "customer") {
+          next.location_name = "Customer Address";
+          next.location_address = customer?.address || "";
+        }
+      }
+      return next;
+    });
   }
 
   async function saveBookingFromEditor() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
 
-    if (!bookingForm.contact_id || !bookingForm.date || !bookingForm.slot) {
-      alert("Please select customer, date, and start slot.");
+    if (!bookingForm.contact_id || !bookingForm.event_type || !bookingForm.date || !bookingForm.slot) {
+      alert("Please select customer, event type, and time.");
+      return;
+    }
+
+    if (bookingForm.location_source === "saved" && !bookingForm.saved_location_id) {
+      alert("Please choose a saved location.");
       return;
     }
 
@@ -398,30 +413,74 @@ export default function App() {
       return;
     }
 
-    const realEnd = calculateEndTime(range.start, bookingForm.event_type);
-    const payload = {
+    const minDurationMs = 30 * 60 * 1000;
+    let newStart = range.start;
+    let newEnd = calculateEndTime(newStart, bookingForm.event_type);
+
+    let payload = {
       user_id: user.id,
       contact_id: bookingForm.contact_id,
       event_type: bookingForm.event_type,
-      start_time: range.start.toISOString(),
-      end_time: realEnd.toISOString(),
+      start_time: newStart.toISOString(),
+      end_time: newEnd.toISOString(),
+      location_type: bookingForm.location_source,
+      location_name: bookingForm.location_source === "saved" ? bookingForm.location_name : "Customer Address",
+      location_address: bookingForm.location_address || "",
     };
 
-    const overlapItems = bookings.filter((item) => {
-      if (bookingEditorMode === "edit" && editingBookingId && item.id === editingBookingId) return false;
+    const otherBookings = bookings.filter((item) => !(bookingEditorMode === "edit" && editingBookingId && item.id === editingBookingId));
+    const overlaps = otherBookings.filter((item) => {
       const itemStart = new Date(item.start_time);
       const itemEnd = new Date(item.end_time);
-      return range.start < itemEnd && realEnd > itemStart;
+      return newStart < itemEnd && newEnd > itemStart;
     });
 
-    if (overlapItems.length) {
+    const exactStartConflict = overlaps.find((item) => new Date(item.start_time).getTime() === newStart.getTime());
+    if (exactStartConflict) {
+      alert("This booking starts at exactly the same time as another event. Please move one of them by at least 15 to 30 minutes.");
+      return;
+    }
+
+    let existingAdjustments = [];
+    if (overlaps.length) {
       const proceed = window.confirm(
-        `This booking overlaps with ${overlapItems.length} existing booking(s). Press OK to continue anyway, or Cancel to stop.`
+        "This booking overlaps with another event. Press OK to continue and auto-adjust the earlier event where possible, or Cancel to stop."
       );
       if (!proceed) return;
+
+      let adjustedNewEnd = newEnd;
+      for (const item of overlaps) {
+        const itemStart = new Date(item.start_time);
+        const itemEnd = new Date(item.end_time);
+
+        if (itemStart < newStart) {
+          if (newStart.getTime() - itemStart.getTime() < minDurationMs) {
+            alert("Cannot auto-adjust because the earlier event would become shorter than 30 minutes.");
+            return;
+          }
+          existingAdjustments.push({
+            id: item.id,
+            payload: { end_time: newStart.toISOString() },
+          });
+        } else if (itemStart > newStart && itemStart < adjustedNewEnd) {
+          adjustedNewEnd = itemStart;
+        }
+      }
+
+      if (adjustedNewEnd.getTime() - newStart.getTime() < minDurationMs) {
+        alert("Cannot save because this booking would become shorter than 30 minutes after overlap adjustment.");
+        return;
+      }
+
+      payload.end_time = adjustedNewEnd.toISOString();
     }
 
     try {
+      for (const item of existingAdjustments) {
+        const savedExisting = await updateBooking(item.id, item.payload);
+        setBookings((prev) => prev.map((b) => (b.id === savedExisting.id ? savedExisting : b)));
+      }
+
       if (bookingEditorMode === "edit" && editingBookingId) {
         const saved = await updateBooking(editingBookingId, payload);
         setBookings((prev) => prev.map((b) => (b.id === saved.id ? saved : b)));
@@ -429,15 +488,14 @@ export default function App() {
         const saved = await createBooking(payload);
         setBookings((prev) => [...prev, saved]);
       }
-      setBookingEditorOpen(false);
+
+      closeBookingEditor();
       setSelectedSlot("");
-      setSelectedBookingId(null);
     } catch (error) {
       console.error(error);
       alert(`Booking save failed: ${error.message}`);
     }
   }
-
 
   function addStatus(name) {
     setStatusOptions((prev) => [...prev, { id: crypto.randomUUID(), name, color: "bg-slate-100 text-slate-700" }]);
@@ -464,42 +522,51 @@ export default function App() {
   }
 
   function updateEventTypeMinutes(id, minutes) {
-    setEventTypes((prev) =>
-      prev.map((x) => (x.id === id ? { ...x, minutes } : x))
-    );
-  }
-
-  function resetStatuses() {
-    setStatusOptions(DEFAULT_STATUS_OPTIONS);
-  }
-
-  function resetTags() {
-    setTagOptions(DEFAULT_TAG_OPTIONS);
-  }
-
-  function resetEventTypes() {
-    setEventTypes(DEFAULT_EVENT_TYPES);
+    setEventTypes((prev) => prev.map((x) => (x.id === id ? { ...x, minutes } : x)));
   }
 
   async function handleSaveSettings() {
-    const result = await saveSettings({
-      statusOptions,
-      tagOptions,
-      eventTypes,
-    });
+    const result = await saveSettings({ statusOptions, tagOptions, eventTypes });
     setSettingsMode(result.mode || "browser_local_storage");
     alert("Settings saved.");
   }
 
+  function handleResetDefaults() {
+    const ok = window.confirm("Reset status, tag, and event type settings back to the default values?");
+    if (!ok) return;
+    setStatusOptions(DEFAULT_STATUS_OPTIONS);
+    setTagOptions(DEFAULT_TAG_OPTIONS);
+    setEventTypes(DEFAULT_EVENT_TYPES);
+  }
+
+  async function handleAddSavedLocation(payload) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    try {
+      const created = await createSavedLocation({ user_id: user.id, ...payload });
+      setSavedLocations((prev) => [...prev, created]);
+    } catch (error) {
+      console.error(error);
+      alert(`Failed to add saved location: ${error.message}`);
+    }
+  }
+
+  async function handleRemoveSavedLocation(id) {
+    try {
+      await deleteSavedLocation(id);
+      setSavedLocations((prev) => prev.filter((x) => x.id !== id));
+    } catch (error) {
+      console.error(error);
+      alert(`Failed to remove saved location: ${error.message}`);
+    }
+  }
 
   async function openIntakeShare() {
     const { data: { user } } = await supabase.auth.getUser();
-    if (user?.email) setCurrentUserEmail(user.email);
     if (!user) {
       alert("Please log in first.");
       return;
     }
-
     setIntakeShareLoading(true);
     try {
       const profile = await fetchOrCreateMyIntakeProfile(user.id);
@@ -512,17 +579,6 @@ export default function App() {
       setIntakeShareLoading(false);
     }
   }
-
-  const bookingEditorProps = {
-    isOpen: bookingEditorOpen,
-    mode: bookingEditorMode,
-    bookingForm,
-    contacts,
-    eventTypes,
-    onClose: () => setBookingEditorOpen(false),
-    onChange: updateBookingForm,
-    onSave: saveBookingFromEditor,
-  };
 
   if (isPublicIntakeRoute) {
     return <PublicIntakePage intakeToken={intakeTokenFromPath} />;
@@ -564,6 +620,7 @@ export default function App() {
                 }[view] || "Workspace"}
               </div>
             </section>
+
             {view === "dashboard" && (
               <DashboardPage
                 contacts={contacts}
@@ -572,17 +629,11 @@ export default function App() {
                 intakeShare={{
                   isOpen: intakeShareOpen,
                   isLoading: intakeShareLoading,
-                  link: intakeProfile
-                    ? `${window.location.origin}/intake/${intakeProfile.intake_token}`
-                    : "",
-                  qrImageUrl: intakeProfile
-                    ? `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(`${window.location.origin}/intake/${intakeProfile.intake_token}`)}`
-                    : "",
+                  link: intakeProfile ? `${window.location.origin}/intake/${intakeProfile.intake_token}` : "",
+                  qrImageUrl: intakeProfile ? `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(`${window.location.origin}/intake/${intakeProfile.intake_token}`)}` : "",
                   onOpen: openIntakeShare,
                   onClose: () => setIntakeShareOpen(false),
                 }}
-                onOpenContact={openContact}
-                onOpenBooking={handleEditBooking}
               />
             )}
 
@@ -604,7 +655,7 @@ export default function App() {
                 onPickSlot={handlePickSlot}
                 onPickBooking={handlePickBooking}
                 onCreateBooking={handleCreateBooking}
-                onEditBooking={handleEditBooking}
+                onEditBooking={openEditBooking}
                 onDeleteBooking={handleDeleteBooking}
                 onHandleFill={handleFill}
                 onSaveContact={handleSaveContactOnly}
@@ -633,19 +684,18 @@ export default function App() {
                 selectedDate={selectedDate}
                 selectedSlot={selectedSlot}
                 selectedBookingId={selectedBookingId}
-                bookingEditor={bookingEditorProps}
                 onPrevDay={() => changeSelectedDate(-1)}
                 onToday={goToToday}
                 onNextDay={() => changeSelectedDate(1)}
                 onPickSlot={handlePickSlot}
                 onPickBooking={handlePickBooking}
-                onCreateBooking={(slot) => openCreateBookingForCurrentContact(slot)}
-                onEditBooking={handleEditBooking}
+                onEditBooking={openEditBooking}
                 onDeleteBooking={handleDeleteBooking}
                 onBack={() => setView("contacts")}
                 onDelete={handleDeleteContact}
                 onChangeField={handleUpdateSelectedContactField}
                 onToggleTag={handleToggleTag}
+                onAddBooking={() => selectedContact && openCustomerCreateBooking(selectedContact)}
               />
             )}
 
@@ -656,14 +706,13 @@ export default function App() {
                 selectedBookingId={selectedBookingId}
                 bookings={bookings}
                 contacts={contacts}
-                bookingEditor={bookingEditorProps}
                 onPrevDay={() => changeSelectedDate(-1)}
                 onToday={goToToday}
                 onNextDay={() => changeSelectedDate(1)}
                 onPickSlot={handlePickSlot}
                 onPickBooking={handlePickBooking}
                 onCreateBooking={handleCreateBooking}
-                onEditBooking={handleEditBooking}
+                onEditBooking={openEditBooking}
                 onDeleteBooking={handleDeleteBooking}
               />
             )}
@@ -674,6 +723,7 @@ export default function App() {
                 tagOptions={tagOptions}
                 eventTypes={eventTypes}
                 settingsMode={settingsMode}
+                savedLocations={savedLocations}
                 onAddStatus={addStatus}
                 onRemoveStatus={removeStatus}
                 onAddTag={addTag}
@@ -681,16 +731,43 @@ export default function App() {
                 onAddEventType={addEventType}
                 onRemoveEventType={removeEventType}
                 onUpdateEventTypeMinutes={updateEventTypeMinutes}
+                onAddSavedLocation={handleAddSavedLocation}
+                onRemoveSavedLocation={handleRemoveSavedLocation}
                 onSaveSettings={handleSaveSettings}
-                onResetStatuses={resetStatuses}
-                onResetTags={resetTags}
-                onResetEventTypes={resetEventTypes}
+                onResetDefaults={handleResetDefaults}
               />
             )}
-            {view === "export" && <ExportPage contacts={contacts} tagOptions={tagOptions} currentUserEmail={currentUserEmail} />}
+
+            {view === "export" && <ExportPage contacts={contacts} tagOptions={tagOptions} />}
           </main>
         </div>
       </div>
+
+      <BookingEditor
+        isOpen={bookingEditorOpen}
+        mode={bookingEditorMode}
+        modalVariant={bookingEditorVariant}
+        bookingForm={bookingForm}
+        contacts={contacts}
+        eventTypes={eventTypes}
+        savedLocations={savedLocations}
+        selectedContact={selectedCustomerForBooking}
+        bookings={bookings}
+        selectedDate={selectedDate}
+        selectedSlot={selectedSlot}
+        selectedBookingId={selectedBookingId}
+        onPrevDay={() => changeSelectedDate(-1)}
+        onToday={goToToday}
+        onNextDay={() => changeSelectedDate(1)}
+        onDateChange={setSelectedDateByValue}
+        onPickSlot={handlePickSlot}
+        onPickBooking={handlePickBooking}
+        onEditBooking={openEditBooking}
+        onDeleteBooking={handleDeleteBooking}
+        onClose={closeBookingEditor}
+        onChange={updateBookingForm}
+        onSave={saveBookingFromEditor}
+      />
     </div>
   );
 }

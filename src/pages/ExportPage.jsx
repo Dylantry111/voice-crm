@@ -7,34 +7,13 @@ function formatExportDate(value) {
   return d.toLocaleString("en-NZ");
 }
 
-function escapeCell(value) {
-  const text = value == null ? "" : String(value);
-  if (/[",\n]/.test(text)) return `"${text.replace(/"/g, '""')}"`;
-  return text;
-}
-
-function buildCsvRows(filteredContacts) {
-  return [
-    ["Name", "Phone", "Email", "Address", "Requirement", "Status", "Tags", "Notes", "Created At"],
-    ...filteredContacts.map((contact) => [
-      contact.name || "",
-      contact.phone || "",
-      contact.email || "",
-      contact.address || "",
-      contact.requirement || "",
-      contact.status || "",
-      Array.isArray(contact.tags) ? contact.tags.join(", ") : "",
-      contact.notes || "",
-      formatExportDate(contact.created_at),
-    ]),
-  ];
-}
-
-function createCsvContent(rows) {
-  return rows.map((row) => row.map(escapeCell).join(",")).join("\n");
-}
-
-function downloadCsv(filename, csv) {
+function downloadCsv(filename, rows) {
+  const escapeCell = (value) => {
+    const text = value == null ? "" : String(value);
+    if (/[",\n]/.test(text)) return `"${text.replace(/"/g, '""')}"`;
+    return text;
+  };
+  const csv = rows.map((row) => row.map(escapeCell).join(",")).join("\n");
   const blob = new Blob(["\ufeff" + csv], { type: "text/csv;charset=utf-8;" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
@@ -46,7 +25,7 @@ function downloadCsv(filename, csv) {
   URL.revokeObjectURL(url);
 }
 
-export default function ExportPage({ contacts, tagOptions, currentUserEmail }) {
+export default function ExportPage({ contacts, tagOptions }) {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [selectedTags, setSelectedTags] = useState([]);
@@ -87,41 +66,24 @@ export default function ExportPage({ contacts, tagOptions, currentUserEmail }) {
     );
   }
 
-  async function handleEmailExport() {
-    const rows = buildCsvRows(filteredContacts);
-    const csv = createCsvContent(rows);
+  function handleExport() {
+    const rows = [
+      ["Name", "Phone", "Email", "Address", "Requirement", "Status", "Tags", "Notes", "Created At"],
+      ...filteredContacts.map((contact) => [
+        contact.name || "",
+        contact.phone || "",
+        contact.email || "",
+        contact.address || "",
+        contact.requirement || "",
+        contact.status || "",
+        Array.isArray(contact.tags) ? contact.tags.join(", ") : "",
+        contact.notes || "",
+        formatExportDate(contact.created_at),
+      ]),
+    ];
+
     const today = new Date().toISOString().slice(0, 10);
-    const filename = `contacts_export_${today}.csv`;
-    const file = new File(["\ufeff" + csv], filename, { type: "text/csv;charset=utf-8;" });
-
-    try {
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
-        await navigator.share({
-          title: "Contacts export",
-          text: "Share or email your filtered contacts export.",
-          files: [file],
-        });
-        return;
-      }
-    } catch (error) {
-      console.error(error);
-    }
-
-    downloadCsv(filename, csv);
-
-    const subject = encodeURIComponent(`Contacts export ${today}`);
-    const body = encodeURIComponent(
-      `Your filtered contacts export has been prepared and downloaded as ${filename}.\n\nAttach the downloaded file to this email if your browser does not support direct file sharing.`
-    );
-    const to = encodeURIComponent(currentUserEmail || "");
-    window.location.href = `mailto:${to}?subject=${subject}&body=${body}`;
-  }
-
-  function handleDownload() {
-    const rows = buildCsvRows(filteredContacts);
-    const csv = createCsvContent(rows);
-    const today = new Date().toISOString().slice(0, 10);
-    downloadCsv(`contacts_export_${today}.csv`, csv);
+    downloadCsv(`contacts_export_${today}.csv`, rows);
   }
 
   return (
@@ -234,17 +196,10 @@ export default function ExportPage({ contacts, tagOptions, currentUserEmail }) {
           </div>
         </div>
 
-        <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-          <button onClick={handleDownload} className="rounded-2xl bg-slate-900 px-4 py-3 text-sm font-medium text-white">
-            Download Export
+        <div className="mt-4 flex gap-3">
+          <button onClick={handleExport} className="rounded-2xl bg-slate-900 px-4 py-3 text-sm font-medium text-white">
+            Export Filtered Contacts
           </button>
-          <button onClick={handleEmailExport} className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-800">
-            Send to Email
-          </button>
-        </div>
-
-        <div className="mt-3 text-xs text-slate-500">
-          On supported mobile devices, “Send to Email” uses the device share sheet so you can send the export file directly to an email app. On other browsers it downloads the file and opens your mail client.
         </div>
       </section>
     </section>

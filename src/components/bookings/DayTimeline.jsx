@@ -13,7 +13,7 @@ function buildBookingMeta(booking, contacts) {
   return {
     ...booking,
     who: contact?.name || "Booked Contact",
-    where: contact?.address || "Address not provided",
+    where: booking.location_address || contact?.address || "Address not provided",
     timeLabel: formatSlotTimeRange(booking.start_time, booking.end_time),
     startDate: new Date(booking.start_time),
     endDate: new Date(booking.end_time),
@@ -25,23 +25,14 @@ function buildClusters(bookings) {
   bookings.forEach((booking) => {
     const current = clusters[clusters.length - 1];
     if (!current) {
-      clusters.push({
-        start: booking.startDate,
-        end: booking.endDate,
-        items: [booking],
-      });
+      clusters.push({ start: booking.startDate, end: booking.endDate, items: [booking] });
       return;
     }
-
     if (booking.startDate < current.end) {
       current.items.push(booking);
       if (booking.endDate > current.end) current.end = booking.endDate;
     } else {
-      clusters.push({
-        start: booking.startDate,
-        end: booking.endDate,
-        items: [booking],
-      });
+      clusters.push({ start: booking.startDate, end: booking.endDate, items: [booking] });
     }
   });
   return clusters;
@@ -56,11 +47,14 @@ export default function DayTimeline({
   onPrevDay,
   onToday,
   onNextDay,
+  onDateChange,
   onPickSlot,
   onPickBooking,
   onCreateBooking,
   onEditBooking,
   onDeleteBooking,
+  showAvailability = true,
+  createLabel = "Create Booking",
 }) {
   const dateKey = formatDateKey(selectedDate);
 
@@ -85,7 +79,7 @@ export default function DayTimeline({
     const durationMinutes = Math.max(30, Math.round((cluster.end - cluster.start) / 60000));
     const steps = Math.max(1, Math.ceil(durationMinutes / 30));
 
-    clusterStartsBySlot.set(ALL_TIME_SLOTS[startIndex], { cluster, steps, clusterKey: `${cluster.start.toISOString()}-${index}` });
+    clusterStartsBySlot.set(ALL_TIME_SLOTS[startIndex], { cluster, clusterKey: `${cluster.start.toISOString()}-${index}` });
     for (let i = 1; i < steps; i += 1) {
       if (ALL_TIME_SLOTS[startIndex + i]) coveredSlots.add(ALL_TIME_SLOTS[startIndex + i]);
     }
@@ -96,8 +90,18 @@ export default function DayTimeline({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <div className="text-sm font-semibold">{formatHeaderDate(selectedDate)}</div>
-          <div className="text-xs text-slate-500">Browse bookings and available start times.</div>
+          <div className="text-xs text-slate-500">
+            {showAvailability ? "Browse bookings and available start times." : "View booked time blocks for this day."}
+          </div>
         </div>
+        {onDateChange ? (
+          <input
+            type="date"
+            value={formatDateKey(selectedDate)}
+            onChange={(e) => onDateChange(e.target.value)}
+            className="h-10 rounded-2xl border border-slate-200 px-3 text-sm outline-none"
+          />
+        ) : null}
       </div>
 
       <div className="mt-4 flex flex-wrap gap-2">
@@ -126,27 +130,31 @@ export default function DayTimeline({
                   {formatSlotTimeRange(clusterStart.cluster.start, clusterStart.cluster.end)}
                 </div>
                 <div className="space-y-3">
-                  {overlap && (
+                  {overlap ? (
                     <div className="text-xs font-semibold uppercase tracking-wide text-rose-700">
                       Overlap warning · {clusterStart.cluster.items.length} bookings
                     </div>
-                  )}
+                  ) : null}
 
                   {clusterStart.cluster.items.map((item) => {
                     const isSelected = selectedBookingId === item.id;
                     return (
                       <div key={item.id} className={`rounded-2xl p-3 ${isSelected ? "bg-white ring-1 ring-slate-300" : "bg-white/70"}`}>
-                        <button onClick={() => onPickBooking(item.id)} className="w-full text-left">
+                        <button onClick={() => onPickBooking?.(item.id)} className="w-full text-left">
                           <div className="text-sm font-semibold text-slate-900">{item.who}</div>
                           <div className="text-xs text-slate-600">{item.timeLabel} · {item.event_type}</div>
                           <div className="text-xs text-slate-500">{item.where}</div>
                         </button>
-                        {isSelected && (
+                        {isSelected && (onEditBooking || onDeleteBooking) ? (
                           <div className="mt-3 flex gap-2">
-                            <button onClick={() => onEditBooking(item)} className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-800">Edit</button>
-                            <button onClick={() => onDeleteBooking(item.id)} className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-700">Delete</button>
+                            {onEditBooking ? (
+                              <button onClick={() => onEditBooking(item)} className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-800">Edit</button>
+                            ) : null}
+                            {onDeleteBooking ? (
+                              <button onClick={() => onDeleteBooking(item.id)} className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-700">Delete</button>
+                            ) : null}
                           </div>
-                        )}
+                        ) : null}
                       </div>
                     );
                   })}
@@ -155,29 +163,31 @@ export default function DayTimeline({
             );
           }
 
+          if (!showAvailability) return null;
+
           const isSelected = selectedSlot === slot;
           return (
             <div
               key={slot}
               className={`grid grid-cols-[110px_1fr] gap-3 rounded-2xl p-3 ${isSelected ? "border-2 border-slate-900 bg-slate-100" : "border border-slate-200 bg-white"}`}
             >
-              <button onClick={() => onPickSlot(slot)} className="contents">
+              <button onClick={() => onPickSlot?.(slot)} className="contents">
                 <div className="text-sm font-medium text-slate-700">{slot}</div>
                 <div className="text-left">
                   <div className="text-sm font-semibold text-slate-900">{isSelected ? "Selected" : "Available"}</div>
                   <div className="text-xs text-slate-500">{isSelected ? "Selected start time" : "Click to select this start time"}</div>
                 </div>
               </button>
-              {isSelected && (
+              {isSelected && onCreateBooking ? (
                 <>
                   <div />
                   <div className="mt-1">
                     <button onClick={() => onCreateBooking(slot)} className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-800">
-                      Create Booking
+                      {createLabel}
                     </button>
                   </div>
                 </>
-              )}
+              ) : null}
             </div>
           );
         })}

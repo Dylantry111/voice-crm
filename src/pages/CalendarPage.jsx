@@ -1,6 +1,5 @@
 import React from "react";
 import DayTimeline from "../components/bookings/DayTimeline";
-import BookingEditor from "../components/bookings/BookingEditor";
 
 export default function CalendarPage({
   selectedDate,
@@ -8,7 +7,6 @@ export default function CalendarPage({
   selectedBookingId,
   bookings,
   contacts,
-  bookingEditor,
   onPrevDay,
   onToday,
   onNextDay,
@@ -25,7 +23,7 @@ export default function CalendarPage({
           <div>
             <div className="text-lg font-semibold">Calendar workflow</div>
             <div className="mt-1 text-sm text-slate-500">
-              Select an empty slot, then create a booking in the modal. Tap any existing booking to edit or delete it.
+              Select an available slot first, then click Add Booking. Existing bookings can be edited or deleted directly.
             </div>
           </div>
         </div>
@@ -45,9 +43,9 @@ export default function CalendarPage({
         onCreateBooking={onCreateBooking}
         onEditBooking={onEditBooking}
         onDeleteBooking={onDeleteBooking}
+        showAvailability={true}
+        createLabel="Add Booking"
       />
-
-      <BookingEditor {...bookingEditor} contacts={contacts} />
     </section>
   );
 }

@@ -1,7 +1,6 @@
 import React from "react";
 import { ArrowLeft, Phone, MessageCircle, MapPin, Trash2, CalendarPlus } from "lucide-react";
 import { StatusBadge } from "../components/common/Badges";
-import BookingEditor from "../components/bookings/BookingEditor";
 import DayTimeline from "../components/bookings/DayTimeline";
 import { formatSelectedDateLabel, formatSlotTimeRange, getNextBookingForContact } from "../lib/dateUtils";
 
@@ -14,19 +13,18 @@ export default function ContactDetailPage({
   selectedDate,
   selectedSlot,
   selectedBookingId,
-  bookingEditor,
   onPrevDay,
   onToday,
   onNextDay,
   onPickSlot,
   onPickBooking,
-  onCreateBooking,
   onEditBooking,
   onDeleteBooking,
   onBack,
   onDelete,
   onChangeField,
   onToggleTag,
+  onAddBooking,
 }) {
   if (!contact) return null;
 
@@ -46,10 +44,7 @@ export default function ContactDetailPage({
         </button>
 
         <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => onCreateBooking("")}
-            className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white"
-          >
+          <button onClick={onAddBooking} className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-2.5 text-sm font-medium text-white">
             <CalendarPlus className="h-4 w-4" />
             Add Booking
           </button>
@@ -152,7 +147,14 @@ export default function ContactDetailPage({
         </div>
       </section>
 
-      <section className="space-y-6">
+      <section className="space-y-4">
+        <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
+          <div className="text-lg font-semibold">Booked Times</div>
+          <div className="mt-1 text-sm text-slate-500">
+            Review this customer's existing appointments. Use Add Booking to schedule a new one.
+          </div>
+        </div>
+
         <DayTimeline
           selectedDate={selectedDate}
           selectedSlot={selectedSlot}
@@ -162,15 +164,12 @@ export default function ContactDetailPage({
           onPrevDay={onPrevDay}
           onToday={onToday}
           onNextDay={onNextDay}
-          onPickSlot={onPickSlot}
           onPickBooking={onPickBooking}
-          onCreateBooking={onCreateBooking}
           onEditBooking={onEditBooking}
           onDeleteBooking={onDeleteBooking}
+          showAvailability={false}
         />
       </section>
-
-      <BookingEditor {...bookingEditor} contacts={contacts} />
     </>
   );
 }

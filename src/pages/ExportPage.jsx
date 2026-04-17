@@ -91,16 +91,27 @@ export default function ExportPage({ contacts, tagOptions }) {
     downloadCsv(`contacts_export_${today}.csv`, rows);
   }
 
-  async function handleSendToEmail() {
-    const rows = buildRows();
-    const { data: { session, user } } = await supabase.auth.getSession();
-    if (!session?.access_token || !user?.email) {
-      alert("Please log in first.");
-      return;
-    }
-    setSending(true);
-    try {
-      const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/export-email`, {
+async function handleSendToEmail() {
+  const rows = buildRows();
+
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!session?.access_token || !user?.email) {
+    alert("Please log in first.");
+    return;
+  }
+
+  setSending(true);
+  try {
+    const res = await fetch(
+      `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/export-email`,
+      {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -111,17 +122,20 @@ export default function ExportPage({ contacts, tagOptions }) {
           filename: `contacts_export_${new Date().toISOString().slice(0, 10)}.xlsx`,
           toEmail: user.email,
         }),
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json.error || "Failed to send email");
-      alert("Export sent to your email.");
-    } catch (error) {
-      console.error(error);
-      alert("Failed to send email. Please try again.");
-    } finally {
-      setSending(false);
-    }
+      }
+    );
+
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(json.error || "Failed to send email");
+
+    alert("Export sent to your email.");
+  } catch (error) {
+    console.error(error);
+    alert("Failed to send email. Please try again.");
+  } finally {
+    setSending(false);
   }
+}
 
   return (
     <section className="space-y-6">

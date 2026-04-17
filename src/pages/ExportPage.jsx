@@ -125,14 +125,17 @@ async function handleSendToEmail() {
       }
     );
 
-    const json = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(json.error || "Failed to send email");
+const json = await res.json().catch(() => ({}));
 
-    alert("Export sent to your email.");
-  } catch (error) {
-    console.error(error);
-    alert("Failed to send email. Please try again.");
-  } finally {
+if (!res.ok) {
+  throw new Error(json.error || `Failed to send email (${res.status})`);
+}
+
+alert("Export sent to your email.");
+} catch (error) {
+  console.error(error);
+  alert(error instanceof Error ? error.message : "Failed to send email. Please try again.");
+}finally {
     setSending(false);
   }
 }

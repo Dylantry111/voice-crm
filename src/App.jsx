@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { createContact, fetchContacts, updateContact } from "./services/contactsService";
 import { createBooking, deleteBooking, fetchBookings, updateBooking } from "./services/bookingsService";
 import { fetchSavedLocations } from "./services/savedLocationsService";
-import { fetchOrCreateMyIntakeProfile } from "./services/publicIntakeService";
+import { fetchOrCreateMyIntakeProfile, updateMyIntakeProfile } from "./services/publicIntakeService";
 import { loadSettings } from "./services/settingsService";
 import { supabase } from "./lib/supabase";
 import { smartFill } from "./lib/parsers/contactParser";
@@ -23,6 +23,21 @@ function Section({ title, children, right }) {
 
 const STATUS_OPTIONS = ["New Lead", "Contacted", "Quoted", "Won", "Lost"];
 
+function downloadCsv(filename, rows) {
+  const csv = rows
+    .map((row) => row.map((cell) => `"${String(cell ?? "").replace(/"/g, '""')}"`).join(","))
+    .join("\n");
+  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
 export default function App() {
   const [contacts, setContacts] = useState([]);
   const [bookings, setBookings] = useState([]);
@@ -39,6 +54,7 @@ export default function App() {
     "Tom phone 021 123 4567 email tom@test.com address 13 Preston Avenue, Mount Albert, Auckland wants living room shutters."
   );
   const [draft, setDraft] = useState(() => smartFill(voiceInput));
+  const [intakeDraft, setIntakeDraft] = useState({ form_title: "", intro_text: "", is_enabled: true });
   const [bookingForm, setBookingForm] = useState({
     contact_id: "",
     event_type: "Measure",
@@ -77,6 +93,11 @@ export default function App() {
       setSavedLocations(savedLocationRows);
       setIntakeProfile(intake);
       setSettings(settingsData);
+      setIntakeDraft({
+        form_title: intake?.form_title || "",
+        intro_text: intake?.intro_text || "",
+        is_enabled: Boolean(intake?.is_enabled),
+      });
       if (!selectedContactId && contactRows[0]?.id) {
         setSelectedContactId(contactRows[0].id);
       }
@@ -273,6 +294,59 @@ export default function App() {
     }
   }
 
+  async function handleSaveIntakeProfile() {
+    setMessage("");
+    try {
+      const updated = await updateMyIntakeProfile(intakeDraft);
+      setIntakeProfile(updated);
+      setIntakeDraft({
+        form_title: updated.form_title || "",
+        intro_text: updated.intro_text || "",
+        is_enabled: Boolean(updated.is_enabled),
+      });
+      setMessage("Intake 配置已保存");
+    } catch (error) {
+      console.error(error);
+      setMessage(`保存 Intake 配置失败：${error.message}`);
+    }
+  }
+
+  function handleExportContacts() {
+    const rows = [
+      ["name", "phone", "email", "address", "requirement", "status", "created_at"],
+      ...filteredContacts.map((contact) => [
+        contact.name,
+        contact.phone,
+        contact.email,
+        contact.address,
+        contact.requirement,
+        contact.status,
+        contact.created_at,
+      ]),
+    ];
+    downloadCsv("voice-crm-contacts.csv", rows);
+    setMessage("联系人 CSV 已导出");
+  }
+
+  function handleExportBookings() {
+    const rows = [
+      ["event_type", "contact_name", "start_time", "end_time", "location_name", "location_address"],
+      ...bookings.map((booking) => {
+        const contact = contacts.find((item) => item.id === booking.contact_id);
+        return [
+          booking.event_type,
+          contact?.name || booking.contact_id,
+          booking.start_time,
+          booking.end_time,
+          booking.location_name,
+          booking.location_address,
+        ];
+      }),
+    ];
+    downloadCsv("voice-crm-bookings.csv", rows);
+    setMessage("预约 CSV 已导出");
+  }
+
   function updateSelectedContactField(field, value) {
     if (!selectedContact) return;
     setContacts((prev) => prev.map((item) => (item.id === selectedContact.id ? { ...item, [field]: value } : item)));
@@ -283,8 +357,11 @@ export default function App() {
     ["contacts", "联系人"],
     ["calendar", "预约"],
     ["capture", "录入"],
+    ["intake", "Intake"],
     ["settings", "系统"],
   ];
+
+  const intakeUrl = intakeProfile ? `${window.location.origin}/intake/${intakeProfile.intake_token}` : "";
 
   if (loading) {
     return <div style={{ padding: 24 }}>加载中...</div>;
@@ -297,7 +374,7 @@ export default function App() {
           <div>
             <h1 style={{ margin: 0, fontSize: 28 }}>Voice CRM</h1>
             <p style={{ margin: "8px 0 0", color: "#475569" }}>
-              旧仓库修复第二阶段：恢复更像真实可用 CRM 的联系人与预约主流程。
+              旧仓库修复第三阶段：补业务闭环，加入 intake 配置与导出能力。
             </p>
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -343,6 +420,29 @@ export default function App() {
           </div>
         )}
 
+        {activeTab === "dashboard" && (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+            <Section title="快捷动作">
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button onClick={() => setActiveTab("capture")}>录入新联系人</button>
+                <button onClick={() => setActiveTab("calendar")}>创建预约</button>
+                <button onClick={handleExportContacts}>导出联系人</button>
+                <button onClick={handleExportBookings}>导出预约</button>
+              </div>
+            </Section>
+            <Section title="最近联系人">
+              <div style={{ display: "grid", gap: 8 }}>
+                {contacts.slice(0, 5).map((contact) => (
+                  <div key={contact.id} style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                    <span>{contact.name}</span>
+                    <span style={{ color: "#64748b", fontSize: 13 }}>{contact.status}</span>
+                  </div>
+                ))}
+              </div>
+            </Section>
+          </div>
+        )}
+
         {activeTab === "capture" && (
           <Section title="语音转联系人草稿" right={<button onClick={fillFromVoice}>智能填充</button>}>
             <div style={{ display: "grid", gap: 10 }}>
@@ -369,7 +469,7 @@ export default function App() {
 
         {activeTab === "contacts" && (
           <div style={{ display: "grid", gridTemplateColumns: "0.95fr 1.05fr", gap: 16, alignItems: "start" }}>
-            <Section title="联系人列表" right={<input placeholder="搜索联系人" value={query} onChange={(e) => setQuery(e.target.value)} />}>
+            <Section title="联系人列表" right={<div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><input placeholder="搜索联系人" value={query} onChange={(e) => setQuery(e.target.value)} /><button onClick={handleExportContacts}>导出 CSV</button></div>}>
               <div style={{ display: "grid", gap: 10 }}>
                 {filteredContacts.length === 0 ? (
                   <div style={{ color: "#64748b" }}>暂无联系人</div>
@@ -444,7 +544,7 @@ export default function App() {
 
         {activeTab === "calendar" && (
           <div style={{ display: "grid", gridTemplateColumns: "0.9fr 1.1fr", gap: 16, alignItems: "start" }}>
-            <Section title={editingBookingId ? "编辑预约" : "创建预约"} right={<button onClick={() => resetBookingForm(selectedContact)}>重置</button>}>
+            <Section title={editingBookingId ? "编辑预约" : "创建预约"} right={<div style={{ display: "flex", gap: 8 }}><button onClick={() => resetBookingForm(selectedContact)}>重置</button><button onClick={handleExportBookings}>导出 CSV</button></div>}>
               <div style={{ display: "grid", gap: 10 }}>
                 <select value={bookingForm.contact_id} onChange={(e) => {
                   const contact = contacts.find((item) => item.id === e.target.value);
@@ -521,6 +621,37 @@ export default function App() {
           </div>
         )}
 
+        {activeTab === "intake" && (
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, alignItems: "start" }}>
+            <Section title="公开 Intake 配置">
+              <div style={{ display: "grid", gap: 10 }}>
+                <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                  <input type="checkbox" checked={intakeDraft.is_enabled} onChange={(e) => setIntakeDraft((prev) => ({ ...prev, is_enabled: e.target.checked }))} />
+                  启用公开 Intake 页面
+                </label>
+                <input value={intakeDraft.form_title} onChange={(e) => setIntakeDraft((prev) => ({ ...prev, form_title: e.target.value }))} placeholder="表单标题" />
+                <textarea value={intakeDraft.intro_text} onChange={(e) => setIntakeDraft((prev) => ({ ...prev, intro_text: e.target.value }))} rows={5} placeholder="介绍文案" />
+                <button onClick={handleSaveIntakeProfile}>保存 Intake 配置</button>
+              </div>
+            </Section>
+            <Section title="Intake 链接与说明">
+              <div style={{ display: "grid", gap: 10 }}>
+                <div>
+                  <strong>Token</strong>
+                  <div style={{ color: "#475569", marginTop: 4 }}>{intakeProfile?.intake_token || "未生成"}</div>
+                </div>
+                <div>
+                  <strong>Public URL</strong>
+                  <div style={{ color: "#475569", marginTop: 4, wordBreak: "break-all" }}>{intakeUrl || "当前不可用"}</div>
+                </div>
+                <div style={{ color: "#64748b", fontSize: 14 }}>
+                  说明：当前仓库第三阶段先补了 intake profile 配置能力；真正的 /intake/:token 页面还需要在下一阶段补成完整公开表单。
+                </div>
+              </div>
+            </Section>
+          </div>
+        )}
+
         {activeTab === "settings" && (
           <Section title="系统状态 / 当前接管情况">
             <pre style={{ margin: 0, whiteSpace: "pre-wrap", fontSize: 13 }}>
@@ -530,6 +661,7 @@ export default function App() {
   savedLocations: savedLocations.map((item) => ({ id: item.id, name: item.name })),
   intakeProfile,
   note: "settings 表当前不存在，因此这里仍是 fallback 模式。",
+  deploymentTodo: "下一步建议核对 Vercel 项目、环境变量和线上分支。",
 }, null, 2)}
             </pre>
           </Section>

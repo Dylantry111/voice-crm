@@ -1,27 +1,24 @@
-import { normalizeAddress, normalizeEmail, normalizePhone } from "./contactParser";
-
-export function findDuplicateContacts(draft, contacts) {
-  const phone = normalizePhone(draft.phone);
-  const email = normalizeEmail(draft.email);
-  const address = normalizeAddress(draft.address);
+export function findDuplicateContacts(draft, contacts = []) {
+  const phone = (draft?.phone || "").replace(/\D+/g, "");
+  const email = (draft?.email || "").trim().toLowerCase();
+  const name = (draft?.name || "").trim().toLowerCase();
 
   const matches = contacts
-    .map((contact) => {
-      const reasons = [];
-      if (phone && normalizePhone(contact.phone) === phone) reasons.push("phone");
-      if (email && normalizeEmail(contact.email) === email) reasons.push("email");
-      if (address && normalizeAddress(contact.address) === address) reasons.push("address");
-      return reasons.length ? { contact, reasons } : null;
+    .filter((contact) => {
+      const cPhone = (contact.phone || "").replace(/\D+/g, "");
+      const cEmail = (contact.email || "").trim().toLowerCase();
+      const cName = (contact.name || "").trim().toLowerCase();
+      return (phone && cPhone && phone === cPhone) || (email && cEmail && email === cEmail) || (name && cName && name === cName);
     })
-    .filter(Boolean);
+    .map((contact) => ({ contact }));
 
-  return { hasDuplicate: matches.length > 0, matches };
+  return {
+    hasDuplicate: matches.length > 0,
+    matches,
+  };
 }
 
 export function buildDuplicateMessage(result) {
   if (!result?.matches?.length) return "";
-  const lines = result.matches.map(({ contact, reasons }, idx) =>
-    `${idx + 1}. ${contact.name || "Unnamed Contact"} — same ${reasons.join(", ")}`
-  );
-  return `Possible duplicate contact found:\n\n${lines.join("\n")}\n\nPress OK to continue, or Cancel to open the first matching contact.`;
+  return `发现疑似重复联系人：${result.matches.map((item) => item.contact.name).join("，")}。是否继续创建？`;
 }

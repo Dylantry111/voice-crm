@@ -1,116 +1,82 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { Briefcase } from "lucide-react";
-import { ALL_TIME_SLOTS, DEFAULT_EVENT_TYPES, DEFAULT_STATUS_OPTIONS, DEFAULT_TAG_OPTIONS, FIELD_LIMITS } from "./lib/constants";
-import { formatDateInputValue, formatDateKey, slotToDateRange } from "./lib/dateUtils";
-import { smartFill, runSelfTests } from "./lib/parsers/contactParser";
-import { buildDuplicateMessage, findDuplicateContacts } from "./lib/parsers/duplicateChecker";
-import Sidebar from "./components/layout/Sidebar";
-import DashboardPage from "./pages/DashboardPage";
-import PublicIntakePage from "./pages/PublicIntakePage";
-import CapturePage from "./pages/CapturePage";
-import ContactsPage from "./pages/ContactsPage";
-import ContactDetailPage from "./pages/ContactDetailPage";
-import CalendarPage from "./pages/CalendarPage";
-import SettingsPage from "./pages/SettingsPage";
-import ExportPage from "./pages/ExportPage";
-import BookingEditor from "./components/bookings/BookingEditor";
-import { createContact, deleteContactCascade, fetchContacts, tryUpdateContactTags, updateContact } from "./services/contactsService";
-import { createBooking, deleteBooking, fetchBookings, updateBooking } from "./services/bookingsService";
-import { loadSettings, saveSettings } from "./services/settingsService";
+import { createContact, fetchContacts, updateContact } from "./services/contactsService";
+import { createBooking, fetchBookings } from "./services/bookingsService";
+import { fetchSavedLocations } from "./services/savedLocationsService";
 import { fetchOrCreateMyIntakeProfile } from "./services/publicIntakeService";
-import { createSavedLocation, deleteSavedLocation, fetchSavedLocations } from "./services/savedLocationsService";
+import { loadSettings } from "./services/settingsService";
 import { supabase } from "./lib/supabase";
+import { smartFill } from "./lib/parsers/contactParser";
+import { findDuplicateContacts, buildDuplicateMessage } from "./lib/parsers/duplicateChecker";
+import { formatDateInputValue } from "./lib/dateUtils";
+
+function Section({ title, children, right }) {
+  return (
+    <section style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 16, padding: 16 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+        <h2 style={{ margin: 0, fontSize: 18 }}>{title}</h2>
+        {right}
+      </div>
+      {children}
+    </section>
+  );
+}
 
 export default function App() {
-  const pathname = typeof window !== "undefined" ? window.location.pathname : "/";
-  const intakeTokenFromPath = pathname.startsWith("/intake/") ? pathname.replace("/intake/", "").trim() : "";
-  const isPublicIntakeRoute = Boolean(intakeTokenFromPath);
-
-  const [view, setView] = useState("dashboard");
   const [contacts, setContacts] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [savedLocations, setSavedLocations] = useState([]);
+  const [intakeProfile, setIntakeProfile] = useState(null);
+  const [settings, setSettings] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
-  const [loadingContacts, setLoadingContacts] = useState(true);
-
-  const [statusOptions, setStatusOptions] = useState(DEFAULT_STATUS_OPTIONS);
-  const [tagOptions, setTagOptions] = useState(DEFAULT_TAG_OPTIONS);
-  const [eventTypes, setEventTypes] = useState(DEFAULT_EVENT_TYPES);
-  const [settingsMode, setSettingsMode] = useState("browser_local_storage");
-
+  const [message, setMessage] = useState("");
   const [voiceInput, setVoiceInput] = useState(
     "Tom phone 021 123 4567 email tom@test.com address 13 Preston Avenue, Mount Albert, Auckland wants living room shutters."
   );
   const [draft, setDraft] = useState(() => smartFill(voiceInput));
-
-  const [selectedContact, setSelectedContact] = useState(null);
-  const [selectedDate, setSelectedDate] = useState(() => {
-    const d = new Date();
-    d.setDate(d.getDate() + 1);
-    d.setHours(0, 0, 0, 0);
-    return d;
-  });
-  const [selectedSlot, setSelectedSlot] = useState("");
-  const [selectedBookingId, setSelectedBookingId] = useState(null);
-
-  const [bookingEditorOpen, setBookingEditorOpen] = useState(false);
-  const [bookingEditorMode, setBookingEditorMode] = useState("create");
-  const [bookingEditorVariant, setBookingEditorVariant] = useState("calendar-create");
-  const [editingBookingId, setEditingBookingId] = useState(null);
-
-  const [intakeShareOpen, setIntakeShareOpen] = useState(false);
-  const [intakeShareLoading, setIntakeShareLoading] = useState(false);
-  const [intakeProfile, setIntakeProfile] = useState(null);
-
   const [bookingForm, setBookingForm] = useState({
     contact_id: "",
-    event_type: DEFAULT_EVENT_TYPES[0].name,
+    event_type: "Measure",
     date: formatDateInputValue(new Date()),
-    slot: "",
-    slotOptions: ALL_TIME_SLOTS,
-    location_source: "customer",
-    saved_location_id: "",
+    start_time: "09:00",
+    end_time: "10:00",
     location_name: "Customer Address",
     location_address: "",
+    location_type: "customer",
   });
 
   useEffect(() => {
-    if (!isPublicIntakeRoute) loadInitialData();
+    loadInitialData();
   }, []);
 
-  useEffect(() => {
-    if (!isPublicIntakeRoute) {
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
-  }, [view, isPublicIntakeRoute]);
-
   async function loadInitialData() {
-    setLoadingContacts(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      setLoadingContacts(false);
-      return;
-    }
-
+    setLoading(true);
+    setMessage("");
     try {
-      const [contactRows, bookingRows, settings, savedLocationRows] = await Promise.all([
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setLoading(false);
+        return;
+      }
+
+      const [contactRows, bookingRows, savedLocationRows, intake, settingsData] = await Promise.all([
         fetchContacts(),
         fetchBookings(),
-        loadSettings(),
         fetchSavedLocations(),
+        fetchOrCreateMyIntakeProfile(),
+        loadSettings(),
       ]);
+
       setContacts(contactRows);
       setBookings(bookingRows);
       setSavedLocations(savedLocationRows);
-      setStatusOptions(settings.statusOptions || DEFAULT_STATUS_OPTIONS);
-      setTagOptions(settings.tagOptions || DEFAULT_TAG_OPTIONS);
-      setEventTypes(settings.eventTypes || DEFAULT_EVENT_TYPES);
-      setSettingsMode(settings.mode || "browser_local_storage");
-      if (contactRows.length) setSelectedContact(contactRows[0]);
+      setIntakeProfile(intake);
+      setSettings(settingsData);
     } catch (error) {
       console.error(error);
+      setMessage(`加载失败：${error.message}`);
     } finally {
-      setLoadingContacts(false);
+      setLoading(false);
     }
   }
 
@@ -125,649 +91,237 @@ export default function App() {
     );
   }, [contacts, query]);
 
-  const duplicateCheck = useMemo(() => findDuplicateContacts(draft, contacts), [draft, contacts]);
-  const testsPass = runSelfTests();
+  const duplicateResult = useMemo(() => findDuplicateContacts(draft, contacts), [draft, contacts]);
 
-  const selectedCustomerForBooking =
-    contacts.find((item) => item.id === bookingForm.contact_id) ||
-    selectedContact ||
-    null;
-
-  function handleFill() {
+  function fillFromVoice() {
     setDraft((prev) => ({ ...prev, ...smartFill(voiceInput) }));
   }
 
-  function setSelectedDateByValue(dateValue) {
-    const d = new Date(dateValue);
-    d.setHours(0, 0, 0, 0);
-    setSelectedDate(d);
-    setBookingForm((curr) => ({ ...curr, date: formatDateKey(d) }));
-  }
-
-  function changeSelectedDate(days) {
-    setSelectedDate((prev) => {
-      const d = new Date(prev);
-      d.setDate(d.getDate() + days);
-      d.setHours(0, 0, 0, 0);
-      setBookingForm((curr) => ({ ...curr, date: formatDateKey(d) }));
-      return d;
-    });
-  }
-
-  function goToToday() {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    setSelectedDate(d);
-    setBookingForm((curr) => ({ ...curr, date: formatDateKey(d) }));
-  }
-
-  function openContact(contact) {
-    setSelectedContact(contact);
-    setSelectedSlot("");
-    setSelectedBookingId(null);
-    setBookingEditorOpen(false);
-    setView("detail");
-  }
-
-  function closeBookingEditor() {
-    setBookingEditorOpen(false);
-    setSelectedBookingId(null);
-  }
-
-  function openCalendarCreateBooking(slot) {
-    setSelectedSlot(slot);
-    setSelectedBookingId(null);
-    setBookingEditorOpen(true);
-    setBookingEditorMode("create");
-    setBookingEditorVariant("calendar-create");
-    setEditingBookingId(null);
-    setBookingForm({
-      contact_id: "",
-      event_type: eventTypes[0]?.name || DEFAULT_EVENT_TYPES[0].name,
-      date: formatDateKey(selectedDate),
-      slot: slot || "",
-      slotOptions: ALL_TIME_SLOTS,
-      location_source: "customer",
-      saved_location_id: "",
-      location_name: "Customer Address",
-      location_address: "",
-    });
-  }
-
-  function openCustomerCreateBooking(contact, slot = "") {
-    const baseDate = formatDateKey(selectedDate);
-    setSelectedContact(contact);
-    setSelectedSlot(slot || "");
-    setSelectedBookingId(null);
-    setBookingEditorOpen(true);
-    setBookingEditorMode("create");
-    setBookingEditorVariant("customer-create");
-    setEditingBookingId(null);
-    setBookingForm({
-      contact_id: contact.id,
-      event_type: eventTypes[0]?.name || DEFAULT_EVENT_TYPES[0].name,
-      date: baseDate,
-      slot: slot || "",
-      slotOptions: ALL_TIME_SLOTS,
-      location_source: "customer",
-      saved_location_id: "",
-      location_name: "Customer Address",
-      location_address: contact.address || "",
-    });
-  }
-
-  function openEditBooking(booking) {
-    const selected = contacts.find((c) => c.id === booking.contact_id) || selectedContact || null;
-    const start = new Date(booking.start_time);
-    const slot = `${start.toLocaleTimeString("en-NZ", { hour: "2-digit", minute: "2-digit", hour12: false })} - ${new Date(start.getTime() + 30 * 60000).toLocaleTimeString("en-NZ", { hour: "2-digit", minute: "2-digit", hour12: false })}`;
-
-    setSelectedBookingId(booking.id);
-    setSelectedSlot("");
-    setSelectedDate(new Date(formatDateKey(booking.start_time)));
-    setSelectedContact(selected);
-    setBookingEditorOpen(true);
-    setBookingEditorMode("edit");
-    setBookingEditorVariant("edit");
-    setEditingBookingId(booking.id);
-    setBookingForm({
-      contact_id: booking.contact_id || "",
-      event_type: booking.event_type || eventTypes[0]?.name || DEFAULT_EVENT_TYPES[0].name,
-      date: formatDateKey(booking.start_time),
-      slot,
-      slotOptions: ALL_TIME_SLOTS,
-      location_source: booking.location_type === "saved" ? "saved" : "customer",
-      saved_location_id: "",
-      location_name: booking.location_name || (booking.location_type === "saved" ? "" : "Customer Address"),
-      location_address: booking.location_address || selected?.address || "",
-    });
-  }
-
-  async function persistContact() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      alert("Please log in first.");
-      return null;
-    }
-
-    const duplicateResult = findDuplicateContacts(draft, contacts);
-    if (duplicateResult.hasDuplicate) {
-      const proceed = window.confirm(buildDuplicateMessage(duplicateResult));
-      if (!proceed) {
-        const firstMatch = duplicateResult.matches[0]?.contact;
-        if (firstMatch) openContact(firstMatch);
-        return null;
-      }
-    }
-
-    const newContact = await createContact({
-      user_id: user.id,
-      name: (draft.name || "New Contact").slice(0, FIELD_LIMITS.contactName),
-      phone: (draft.phone || "").slice(0, FIELD_LIMITS.phone),
-      email: (draft.email || "").slice(0, FIELD_LIMITS.email),
-      address: (draft.address || "").slice(0, FIELD_LIMITS.address),
-      requirement: (draft.requirement || "General enquiry").slice(0, FIELD_LIMITS.requirement),
-      notes: (draft.notes || voiceInput).slice(0, FIELD_LIMITS.notes),
-      status: "New Lead",
-      tags: [],
-    });
-
-    setContacts((prev) => [newContact, ...prev]);
-    return newContact;
-  }
-
-  async function handleSaveContactOnly() {
+  async function handleCreateContact() {
+    setMessage("");
     try {
-      const newContact = await persistContact();
-      if (!newContact) return;
-      openContact(newContact);
-    } catch (error) {
-      console.error(error);
-      alert(`Save failed: ${error.message}`);
-    }
-  }
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("请先登录");
 
-  async function handleSaveContactAndAddBooking() {
-    try {
-      const newContact = await persistContact();
-      if (!newContact) return;
-      setView("detail");
-      openCustomerCreateBooking(newContact);
-    } catch (error) {
-      console.error(error);
-      alert(`Save failed: ${error.message}`);
-    }
-  }
-
-  async function handleDeleteContact() {
-    if (!selectedContact) return;
-    const ok = window.confirm(`Delete ${selectedContact.name}? This will also remove related bookings.`);
-    if (!ok) return;
-
-    try {
-      await deleteContactCascade(selectedContact.id);
-      setBookings((prev) => prev.filter((b) => b.contact_id !== selectedContact.id));
-      setContacts((prev) => prev.filter((c) => c.id !== selectedContact.id));
-      setSelectedContact(null);
-      setView("contacts");
-    } catch (error) {
-      console.error(error);
-      alert(`Delete failed: ${error.message}`);
-    }
-  }
-
-  async function handleUpdateSelectedContactField(field, value) {
-    if (!selectedContact) return;
-    const updated = { ...selectedContact, [field]: value };
-    setSelectedContact(updated);
-    setContacts((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
-    try {
-      const saved = await updateContact(selectedContact.id, { [field]: value });
-      setSelectedContact((prev) => ({ ...prev, ...saved, tags: updated.tags }));
-      setContacts((prev) => prev.map((c) => (c.id === saved.id ? { ...c, ...saved, tags: updated.tags } : c)));
-    } catch (error) {
-      console.error(error);
-    }
-  }
-
-  async function handleToggleTag(tagName) {
-    if (!selectedContact) return;
-    const current = selectedContact.tags || [];
-    const nextTags = current.includes(tagName) ? current.filter((t) => t !== tagName) : [...current, tagName];
-    const updated = { ...selectedContact, tags: nextTags };
-    setSelectedContact(updated);
-    setContacts((prev) => prev.map((c) => (c.id === updated.id ? updated : c)));
-    try {
-      await tryUpdateContactTags(selectedContact.id, nextTags);
-    } catch (error) {
-      console.warn(error);
-    }
-  }
-
-  function calculateEndTime(start, eventTypeName) {
-    const type = eventTypes.find((x) => x.name === eventTypeName) || eventTypes[0];
-    const end = new Date(start);
-    end.setMinutes(end.getMinutes() + (type?.minutes || 30));
-    return end;
-  }
-
-  function handlePickSlot(slot) {
-    setSelectedSlot(slot);
-    setSelectedBookingId(null);
-    setBookingForm((curr) => ({ ...curr, date: formatDateKey(selectedDate), slot }));
-  }
-
-  function handlePickBooking(bookingId) {
-    setSelectedBookingId(bookingId);
-    setSelectedSlot("");
-  }
-
-  function handleCreateBooking(slot) {
-    openCalendarCreateBooking(slot);
-  }
-
-  async function handleDeleteBooking(bookingId) {
-    const ok = window.confirm("Delete this booking?");
-    if (!ok) return;
-    try {
-      await deleteBooking(bookingId);
-      setBookings((prev) => prev.filter((b) => b.id !== bookingId));
-      if (selectedBookingId === bookingId) setSelectedBookingId(null);
-      setBookingEditorOpen(false);
-    } catch (error) {
-      console.error(error);
-      alert(`Delete booking failed: ${error.message}`);
-    }
-  }
-
-  function updateBookingForm(field, value) {
-    setBookingForm((prev) => {
-      const next = { ...prev, [field]: value };
-      if (field === "contact_id") {
-        const customer = contacts.find((c) => c.id === value);
-        if (next.location_source === "customer") {
-          next.location_name = "Customer Address";
-          next.location_address = customer?.address || "";
-        }
-      }
-      return next;
-    });
-  }
-
-  async function saveBookingFromEditor() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    if (!bookingForm.contact_id || !bookingForm.event_type || !bookingForm.date || !bookingForm.slot) {
-      alert("Please select customer, event type, and time.");
-      return;
-    }
-
-    if (bookingForm.location_source === "saved" && !bookingForm.saved_location_id) {
-      alert("Please choose a saved location.");
-      return;
-    }
-
-    const range = slotToDateRange(new Date(bookingForm.date), bookingForm.slot);
-    if (!range) {
-      alert("Invalid slot.");
-      return;
-    }
-
-    const minDurationMs = 30 * 60 * 1000;
-    let newStart = range.start;
-    let newEnd = calculateEndTime(newStart, bookingForm.event_type);
-
-    let payload = {
-      user_id: user.id,
-      contact_id: bookingForm.contact_id,
-      event_type: bookingForm.event_type,
-      start_time: newStart.toISOString(),
-      end_time: newEnd.toISOString(),
-      location_type: bookingForm.location_source,
-      location_name: bookingForm.location_source === "saved" ? bookingForm.location_name : "Customer Address",
-      location_address: bookingForm.location_address || "",
-    };
-
-    const otherBookings = bookings.filter((item) => !(bookingEditorMode === "edit" && editingBookingId && item.id === editingBookingId));
-    const overlaps = otherBookings.filter((item) => {
-      const itemStart = new Date(item.start_time);
-      const itemEnd = new Date(item.end_time);
-      return newStart < itemEnd && newEnd > itemStart;
-    });
-
-    const exactStartConflict = overlaps.find((item) => new Date(item.start_time).getTime() === newStart.getTime());
-    if (exactStartConflict) {
-      alert("This booking starts at exactly the same time as another event. Please move one of them by at least 15 to 30 minutes.");
-      return;
-    }
-
-    let existingAdjustments = [];
-    if (overlaps.length) {
-      const proceed = window.confirm(
-        "This booking overlaps with another event. Press OK to continue and auto-adjust the earlier event where possible, or Cancel to stop."
-      );
-      if (!proceed) return;
-
-      let adjustedNewEnd = newEnd;
-      for (const item of overlaps) {
-        const itemStart = new Date(item.start_time);
-        const itemEnd = new Date(item.end_time);
-
-        if (itemStart < newStart) {
-          if (newStart.getTime() - itemStart.getTime() < minDurationMs) {
-            alert("Cannot auto-adjust because the earlier event would become shorter than 30 minutes.");
-            return;
-          }
-          existingAdjustments.push({
-            id: item.id,
-            payload: { end_time: newStart.toISOString() },
-          });
-        } else if (itemStart > newStart && itemStart < adjustedNewEnd) {
-          adjustedNewEnd = itemStart;
-        }
+      if (duplicateResult.hasDuplicate) {
+        const proceed = window.confirm(buildDuplicateMessage(duplicateResult));
+        if (!proceed) return;
       }
 
-      if (adjustedNewEnd.getTime() - newStart.getTime() < minDurationMs) {
-        alert("Cannot save because this booking would become shorter than 30 minutes after overlap adjustment.");
-        return;
-      }
-
-      payload.end_time = adjustedNewEnd.toISOString();
-    }
-
-    try {
-      for (const item of existingAdjustments) {
-        const savedExisting = await updateBooking(item.id, item.payload);
-        setBookings((prev) => prev.map((b) => (b.id === savedExisting.id ? savedExisting : b)));
-      }
-
-      if (bookingEditorMode === "edit" && editingBookingId) {
-        const saved = await updateBooking(editingBookingId, payload);
-        setBookings((prev) => prev.map((b) => (b.id === saved.id ? saved : b)));
-      } else {
-        const saved = await createBooking(payload);
-        setBookings((prev) => [...prev, saved]);
-      }
-
-      closeBookingEditor();
-      setSelectedSlot("");
+      const newContact = await createContact({
+        user_id: user.id,
+        name: draft.name || "New Contact",
+        phone: draft.phone || "",
+        email: draft.email || "",
+        address: draft.address || "",
+        requirement: draft.requirement || "General enquiry",
+        notes: draft.notes || voiceInput,
+        status: draft.status || "New Lead",
+        tags: draft.tags || [],
+        source: "manual",
+      });
+      setContacts((prev) => [newContact, ...prev]);
+      setBookingForm((curr) => ({ ...curr, contact_id: newContact.id, location_address: newContact.address || "" }));
+      setMessage(`已创建联系人：${newContact.name}`);
     } catch (error) {
       console.error(error);
-      alert(`Booking save failed: ${error.message}`);
+      setMessage(`创建联系人失败：${error.message}`);
     }
   }
 
-  function addStatus(name) {
-    setStatusOptions((prev) => [...prev, { id: crypto.randomUUID(), name: name.slice(0, FIELD_LIMITS.shortName), color: "bg-slate-100 text-slate-700" }]);
-  }
-
-  function editStatus(id, name) {
-    setStatusOptions((prev) => prev.map((x) => (x.id === id ? { ...x, name: name.slice(0, FIELD_LIMITS.shortName) } : x)));
-  }
-
-  
-  function addTag(name) {
-    setTagOptions((prev) => [...prev, { id: crypto.randomUUID(), name: name.slice(0, FIELD_LIMITS.shortName), color: "bg-slate-100 text-slate-700" }]);
-  }
-
-  function removeTag(id) {
-    setTagOptions((prev) => prev.filter((x) => x.id !== id));
-  }
-
-  function addEventType(name, minutes = 60) {
-    setEventTypes((prev) => [...prev, { id: crypto.randomUUID(), name: name.slice(0, FIELD_LIMITS.shortName), minutes, color: "bg-slate-900 text-white" }]);
-  }
-
-  function removeEventType(id) {
-    setEventTypes((prev) => prev.filter((x) => x.id !== id));
-  }
-
-  function editEventType(id, name, minutes) {
-    setEventTypes((prev) => prev.map((x) => (x.id === id ? { ...x, name: name.slice(0, FIELD_LIMITS.shortName), minutes } : x)));
-  }
-
-  async function handleSaveSettings() {
-    const result = await saveSettings({ statusOptions, tagOptions, eventTypes });
-    setSettingsMode(result.mode || "browser_local_storage");
-    alert("Settings saved.");
-  }
-
-  function handleResetDefaults() {
-    const ok = window.confirm("Reset status, tag, and event type settings back to the default values?");
-    if (!ok) return;
-    setStatusOptions(DEFAULT_STATUS_OPTIONS);
-    setTagOptions(DEFAULT_TAG_OPTIONS);
-    setEventTypes(DEFAULT_EVENT_TYPES);
-  }
-
-  async function handleAddSavedLocation(payload) {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
+  async function handleCreateBooking() {
+    setMessage("");
     try {
-      const created = await createSavedLocation({ user_id: user.id, ...payload });
-      setSavedLocations((prev) => [...prev, created]);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("请先登录");
+      if (!bookingForm.contact_id) throw new Error("请先选择联系人");
+
+      const start = new Date(`${bookingForm.date}T${bookingForm.start_time}:00`);
+      const end = new Date(`${bookingForm.date}T${bookingForm.end_time}:00`);
+      if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) throw new Error("预约时间无效");
+      if (end <= start) throw new Error("结束时间必须晚于开始时间");
+
+      const booking = await createBooking({
+        user_id: user.id,
+        contact_id: bookingForm.contact_id,
+        event_type: bookingForm.event_type,
+        start_time: start.toISOString(),
+        end_time: end.toISOString(),
+        location_type: bookingForm.location_type,
+        location_name: bookingForm.location_name,
+        location_address: bookingForm.location_address,
+      });
+      setBookings((prev) => [booking, ...prev]);
+      setMessage("预约已创建");
     } catch (error) {
       console.error(error);
-      alert(`Failed to add saved location: ${error.message}`);
+      setMessage(`创建预约失败：${error.message}`);
     }
   }
 
-  async function handleRemoveSavedLocation(id) {
+  async function handleMarkContact(contact, nextStatus) {
+    setMessage("");
     try {
-      await deleteSavedLocation(id);
-      setSavedLocations((prev) => prev.filter((x) => x.id !== id));
+      const updated = await updateContact(contact.id, { status: nextStatus });
+      setContacts((prev) => prev.map((item) => (item.id === contact.id ? updated : item)));
+      setMessage(`已更新 ${contact.name} 状态为 ${nextStatus}`);
     } catch (error) {
       console.error(error);
-      alert(`Failed to remove saved location: ${error.message}`);
+      setMessage(`更新联系人失败：${error.message}`);
     }
   }
 
-  async function openIntakeShare() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      alert("Please log in first.");
-      return;
-    }
-    setIntakeShareLoading(true);
-    try {
-      const profile = await fetchOrCreateMyIntakeProfile(user.id);
-      setIntakeProfile(profile);
-      setIntakeShareOpen(true);
-    } catch (error) {
-      console.error(error);
-      alert(`Failed to load QR intake profile: ${error.message}`);
-    } finally {
-      setIntakeShareLoading(false);
-    }
-  }
-
-  if (isPublicIntakeRoute) {
-    return <PublicIntakePage intakeToken={intakeTokenFromPath} />;
+  if (loading) {
+    return <div style={{ padding: 24 }}>加载中...</div>;
   }
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900">
-      <div className="mx-auto flex min-h-screen max-w-7xl flex-col">
-        <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
-          <div className="mx-auto flex w-full max-w-7xl items-center justify-between px-4 py-4 md:px-6">
-            <div className="min-w-0">
-              <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-3 py-1 text-[11px] font-medium text-slate-600">
-                <Briefcase className="h-3.5 w-3.5" />
-                One phone. Separate work from life.
-              </div>
-              <h1 className="mt-2 text-lg font-semibold tracking-tight md:text-2xl">Voice-first Client Workspace</h1>
-              <p className="mt-1 hidden text-sm text-slate-500 md:block">
-                Capture clients fast, keep full notes, contact instantly, manage bookings, and export filtered contacts.
-              </p>
-            </div>
-          </div>
-        </header>
-
-        <div className="mx-auto grid w-full max-w-7xl flex-1 gap-4 px-4 py-4 md:grid-cols-[220px_1fr] md:gap-6 md:px-6 md:py-6">
-          <Sidebar view={view} setView={setView} testsPass={testsPass} />
-
-          <main className="min-w-0 space-y-5 md:space-y-6">
-            <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm md:hidden">
-              <div className="text-xs uppercase tracking-wide text-slate-500">Current section</div>
-              <div className="mt-1 text-lg font-semibold text-slate-900">
-                {{
-                  dashboard: "Dashboard",
-                  capture: "Capture",
-                  contacts: "Contacts",
-                  detail: selectedContact?.name || "Contact Detail",
-                  calendar: "Calendar",
-                  settings: "Settings",
-                  export: "Export",
-                }[view] || "Workspace"}
-              </div>
-            </section>
-
-            {view === "dashboard" && (
-              <DashboardPage
-                contacts={contacts}
-                bookings={bookings}
-                intakeShare={{
-                  isOpen: intakeShareOpen,
-                  isLoading: intakeShareLoading,
-                  link: intakeProfile ? `${window.location.origin}/intake/${intakeProfile.intake_token}` : "",
-                  qrImageUrl: intakeProfile ? `https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(`${window.location.origin}/intake/${intakeProfile.intake_token}`)}` : "",
-                  onOpen: openIntakeShare,
-                  onClose: () => setIntakeShareOpen(false),
-                }}
-              />
-            )}
-
-            {view === "capture" && (
-              <CapturePage
-                voiceInput={voiceInput}
-                setVoiceInput={setVoiceInput}
-                draft={draft}
-                setDraft={setDraft}
-                duplicateCheck={duplicateCheck}
-                selectedDate={selectedDate}
-                selectedSlot={selectedSlot}
-                selectedBookingId={selectedBookingId}
-                bookings={bookings}
-                contacts={contacts}
-                onPrevDay={() => changeSelectedDate(-1)}
-                onToday={goToToday}
-                onNextDay={() => changeSelectedDate(1)}
-                onPickSlot={handlePickSlot}
-                onPickBooking={handlePickBooking}
-                onCreateBooking={handleCreateBooking}
-                onEditBooking={openEditBooking}
-                onDeleteBooking={handleDeleteBooking}
-                onHandleFill={handleFill}
-                onSaveContact={handleSaveContactOnly}
-                onSaveContactAndAddBooking={handleSaveContactAndAddBooking}
-              />
-            )}
-
-            {view === "contacts" && (
-              <ContactsPage
-                query={query}
-                setQuery={setQuery}
-                filteredContacts={filteredContacts}
-                loadingContacts={loadingContacts}
-                onOpenContact={openContact}
-                statusOptions={statusOptions}
-              />
-            )}
-
-            {view === "detail" && (
-              <ContactDetailPage
-                contact={selectedContact}
-                statusOptions={statusOptions}
-                tagOptions={tagOptions}
-                bookings={bookings}
-                contacts={contacts}
-                selectedDate={selectedDate}
-                selectedSlot={selectedSlot}
-                selectedBookingId={selectedBookingId}
-                onPrevDay={() => changeSelectedDate(-1)}
-                onToday={goToToday}
-                onNextDay={() => changeSelectedDate(1)}
-                onPickSlot={handlePickSlot}
-                onPickBooking={handlePickBooking}
-                onEditBooking={openEditBooking}
-                onDeleteBooking={handleDeleteBooking}
-                onBack={() => setView("contacts")}
-                onDelete={handleDeleteContact}
-                onChangeField={handleUpdateSelectedContactField}
-                onToggleTag={handleToggleTag}
-                onAddBooking={() => selectedContact && openCustomerCreateBooking(selectedContact)}
-              />
-            )}
-
-            {view === "calendar" && (
-              <CalendarPage
-                selectedDate={selectedDate}
-                selectedSlot={selectedSlot}
-                selectedBookingId={selectedBookingId}
-                bookings={bookings}
-                contacts={contacts}
-                onPrevDay={() => changeSelectedDate(-1)}
-                onToday={goToToday}
-                onNextDay={() => changeSelectedDate(1)}
-                onPickSlot={handlePickSlot}
-                onPickBooking={handlePickBooking}
-                onCreateBooking={handleCreateBooking}
-                onEditBooking={openEditBooking}
-                onDeleteBooking={handleDeleteBooking}
-              />
-            )}
-
-            {view === "settings" && (
-              <SettingsPage
-                statusOptions={statusOptions}
-                tagOptions={tagOptions}
-                eventTypes={eventTypes}
-                settingsMode={settingsMode}
-                savedLocations={savedLocations}
-                onAddStatus={addStatus}
-                onEditStatus={editStatus}
-                onAddTag={addTag}
-                onRemoveTag={removeTag}
-                onAddEventType={addEventType}
-                onEditEventType={editEventType}
-                onRemoveEventType={removeEventType}
-                onAddSavedLocation={handleAddSavedLocation}
-                onRemoveSavedLocation={handleRemoveSavedLocation}
-                onSaveSettings={handleSaveSettings}
-                onResetDefaults={handleResetDefaults}
-              />
-            )}
-
-            {view === "export" && <ExportPage contacts={contacts} tagOptions={tagOptions} />}
-          </main>
+    <div style={{ minHeight: "100vh", background: "#f8fafc", color: "#0f172a" }}>
+      <div style={{ maxWidth: 1200, margin: "0 auto", padding: 24, display: "grid", gap: 16 }}>
+        <div>
+          <h1 style={{ margin: 0, fontSize: 28 }}>Voice CRM</h1>
+          <p style={{ margin: "8px 0 0", color: "#475569" }}>
+            旧仓库修复中的最小可运行版本。已接通 Supabase 联系人、预约、地址与 intake profile。
+          </p>
         </div>
-      </div>
 
-      <BookingEditor
-        isOpen={bookingEditorOpen}
-        mode={bookingEditorMode}
-        modalVariant={bookingEditorVariant}
-        bookingForm={bookingForm}
-        contacts={contacts}
-        eventTypes={eventTypes}
-        savedLocations={savedLocations}
-        selectedContact={selectedCustomerForBooking}
-        bookings={bookings}
-        selectedDate={selectedDate}
-        selectedSlot={selectedSlot}
-        selectedBookingId={selectedBookingId}
-        onPrevDay={() => changeSelectedDate(-1)}
-        onToday={goToToday}
-        onNextDay={() => changeSelectedDate(1)}
-        onDateChange={setSelectedDateByValue}
-        onPickSlot={handlePickSlot}
-        onPickBooking={handlePickBooking}
-        onEditBooking={openEditBooking}
-        onDeleteBooking={handleDeleteBooking}
-        onClose={closeBookingEditor}
-        onChange={updateBookingForm}
-        onSave={saveBookingFromEditor}
-      />
+        {message ? (
+          <div style={{ background: "#ecfeff", border: "1px solid #a5f3fc", color: "#155e75", borderRadius: 12, padding: 12 }}>
+            {message}
+          </div>
+        ) : null}
+
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+          <Section title="联系人">
+            <div style={{ fontSize: 28, fontWeight: 700 }}>{contacts.length}</div>
+          </Section>
+          <Section title="预约">
+            <div style={{ fontSize: 28, fontWeight: 700 }}>{bookings.length}</div>
+          </Section>
+          <Section title="常用地址">
+            <div style={{ fontSize: 28, fontWeight: 700 }}>{savedLocations.length}</div>
+          </Section>
+          <Section title="公开 Intake">
+            <div style={{ fontSize: 14, lineHeight: 1.6 }}>
+              {intakeProfile ? (
+                <>
+                  <div>状态：{intakeProfile.is_enabled ? "已启用" : "未启用"}</div>
+                  <div>Token：{intakeProfile.intake_token}</div>
+                </>
+              ) : (
+                "未配置"
+              )}
+            </div>
+          </Section>
+        </div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1.1fr 0.9fr", gap: 16, alignItems: "start" }}>
+          <Section title="语音转联系人草稿" right={<button onClick={fillFromVoice}>智能填充</button>}>
+            <div style={{ display: "grid", gap: 10 }}>
+              <textarea value={voiceInput} onChange={(e) => setVoiceInput(e.target.value)} rows={5} style={{ width: "100%", padding: 12 }} />
+              <input placeholder="姓名" value={draft.name || ""} onChange={(e) => setDraft((prev) => ({ ...prev, name: e.target.value }))} />
+              <input placeholder="电话" value={draft.phone || ""} onChange={(e) => setDraft((prev) => ({ ...prev, phone: e.target.value }))} />
+              <input placeholder="邮箱" value={draft.email || ""} onChange={(e) => setDraft((prev) => ({ ...prev, email: e.target.value }))} />
+              <input placeholder="地址" value={draft.address || ""} onChange={(e) => setDraft((prev) => ({ ...prev, address: e.target.value }))} />
+              <input placeholder="需求" value={draft.requirement || ""} onChange={(e) => setDraft((prev) => ({ ...prev, requirement: e.target.value }))} />
+              {duplicateResult.hasDuplicate ? (
+                <div style={{ fontSize: 13, color: "#92400e", background: "#fef3c7", borderRadius: 8, padding: 8 }}>
+                  发现疑似重复：{duplicateResult.matches.map((m) => m.contact.name).join("，")}
+                </div>
+              ) : null}
+              <button onClick={handleCreateContact}>保存联系人</button>
+            </div>
+          </Section>
+
+          <Section title="创建预约">
+            <div style={{ display: "grid", gap: 10 }}>
+              <select value={bookingForm.contact_id} onChange={(e) => {
+                const contact = contacts.find((item) => item.id === e.target.value);
+                setBookingForm((prev) => ({
+                  ...prev,
+                  contact_id: e.target.value,
+                  location_address: contact?.address || prev.location_address,
+                }));
+              }}>
+                <option value="">选择联系人</option>
+                {contacts.map((contact) => (
+                  <option key={contact.id} value={contact.id}>{contact.name} {contact.phone ? `- ${contact.phone}` : ""}</option>
+                ))}
+              </select>
+              <input placeholder="事件类型" value={bookingForm.event_type} onChange={(e) => setBookingForm((prev) => ({ ...prev, event_type: e.target.value }))} />
+              <input type="date" value={bookingForm.date} onChange={(e) => setBookingForm((prev) => ({ ...prev, date: e.target.value }))} />
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                <input type="time" value={bookingForm.start_time} onChange={(e) => setBookingForm((prev) => ({ ...prev, start_time: e.target.value }))} />
+                <input type="time" value={bookingForm.end_time} onChange={(e) => setBookingForm((prev) => ({ ...prev, end_time: e.target.value }))} />
+              </div>
+              <input placeholder="地点名称" value={bookingForm.location_name} onChange={(e) => setBookingForm((prev) => ({ ...prev, location_name: e.target.value }))} />
+              <textarea placeholder="地点地址" value={bookingForm.location_address} onChange={(e) => setBookingForm((prev) => ({ ...prev, location_address: e.target.value }))} rows={3} />
+              <button onClick={handleCreateBooking}>保存预约</button>
+            </div>
+          </Section>
+        </div>
+
+        <Section title="联系人列表" right={<input placeholder="搜索联系人" value={query} onChange={(e) => setQuery(e.target.value)} />}>
+          <div style={{ display: "grid", gap: 10 }}>
+            {filteredContacts.length === 0 ? (
+              <div style={{ color: "#64748b" }}>暂无联系人</div>
+            ) : filteredContacts.map((contact) => (
+              <div key={contact.id} style={{ border: "1px solid #e5e7eb", borderRadius: 12, padding: 12, display: "grid", gap: 6 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                  <div>
+                    <strong>{contact.name || "Unnamed"}</strong>
+                    <div style={{ color: "#475569", fontSize: 14 }}>{contact.phone || "无电话"} {contact.email ? `· ${contact.email}` : ""}</div>
+                  </div>
+                  <div style={{ fontSize: 13, color: "#334155" }}>{contact.status || "Unknown"}</div>
+                </div>
+                <div style={{ fontSize: 14, color: "#475569" }}>{contact.address || "无地址"}</div>
+                <div style={{ fontSize: 14 }}>{contact.requirement || "无需求描述"}</div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <button onClick={() => handleMarkContact(contact, "Contacted")}>标记 Contacted</button>
+                  <button onClick={() => handleMarkContact(contact, "Quoted")}>标记 Quoted</button>
+                  <button onClick={() => setBookingForm((prev) => ({
+                    ...prev,
+                    contact_id: contact.id,
+                    location_address: contact.address || "",
+                  }))}>带入预约</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Section>
+
+        <Section title="最近预约">
+          <div style={{ display: "grid", gap: 10 }}>
+            {bookings.length === 0 ? (
+              <div style={{ color: "#64748b" }}>暂无预约</div>
+            ) : bookings
+              .slice()
+              .sort((a, b) => new Date(a.start_time) - new Date(b.start_time))
+              .map((booking) => {
+                const contact = contacts.find((item) => item.id === booking.contact_id);
+                return (
+                  <div key={booking.id} style={{ border: "1px solid #e5e7eb", borderRadius: 12, padding: 12 }}>
+                    <div><strong>{booking.event_type}</strong> · {contact?.name || booking.contact_id}</div>
+                    <div style={{ color: "#475569", fontSize: 14 }}>
+                      {new Date(booking.start_time).toLocaleString("en-NZ")} → {new Date(booking.end_time).toLocaleString("en-NZ")}
+                    </div>
+                    <div style={{ color: "#475569", fontSize: 14 }}>{booking.location_name} · {booking.location_address}</div>
+                  </div>
+                );
+              })}
+          </div>
+        </Section>
+
+        <Section title="系统状态">
+          <pre style={{ margin: 0, whiteSpace: "pre-wrap", fontSize: 13 }}>
+{JSON.stringify({
+  settingsMode: settings?.mode || "fallback_local",
+  eventTypes: settings?.eventTypes?.map((item) => item.name || item) || ["Measure", "Install", "Call"],
+  savedLocations: savedLocations.map((item) => item.name),
+}, null, 2)}
+          </pre>
+        </Section>
+      </div>
     </div>
   );
 }

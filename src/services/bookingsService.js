@@ -7,18 +7,19 @@ export async function fetchBookings() {
 }
 
 export async function createBooking(payload) {
-  const { data, error } = await supabase.from("bookings").insert([payload]).select().single();
+  const { data, error } = await supabase.from("bookings").insert(payload).select().single();
   if (error) throw error;
   return data;
 }
 
-export async function updateBooking(bookingId, payload) {
-  const { data, error } = await supabase.from("bookings").update(payload).eq("id", bookingId).select().single();
+export async function updateBooking(id, patch) {
+  const { data, error } = await supabase.from("bookings").update(patch).eq("id", id).select().single();
   if (error) throw error;
   return data;
 }
 
-export async function deleteBooking(bookingId) {
-  const { error } = await supabase.from("bookings").delete().eq("id", bookingId);
+export async function deleteBooking(id) {
+  const { error } = await supabase.from("bookings").delete().eq("id", id);
   if (error) throw error;
+  return true;
 }

@@ -2,7 +2,12 @@ import React, { useEffect, useMemo, useState } from "react";
 import { createContact, fetchContacts, updateContact } from "./services/contactsService";
 import { createBooking, deleteBooking, fetchBookings, updateBooking } from "./services/bookingsService";
 import { fetchSavedLocations } from "./services/savedLocationsService";
-import { fetchOrCreateMyIntakeProfile, updateMyIntakeProfile } from "./services/publicIntakeService";
+import {
+  fetchOrCreateMyIntakeProfile,
+  fetchPublicIntakeProfileByToken,
+  submitPublicIntake,
+  updateMyIntakeProfile,
+} from "./services/publicIntakeService";
 import { loadSettings } from "./services/settingsService";
 import { supabase } from "./lib/supabase";
 import { smartFill } from "./lib/parsers/contactParser";
@@ -38,7 +43,96 @@ function downloadCsv(filename, rows) {
   URL.revokeObjectURL(url);
 }
 
+function PublicIntakeScreen({ token }) {
+  const [profile, setProfile] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [message, setMessage] = useState("");
+  const [submitted, setSubmitted] = useState(false);
+  const [form, setForm] = useState({
+    name: "",
+    phone: "",
+    email: "",
+    address: "",
+    requirement: "",
+    notes: "",
+  });
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const data = await fetchPublicIntakeProfileByToken(token);
+        if (!active) return;
+        setProfile(data);
+      } catch (error) {
+        if (!active) return;
+        setMessage(`加载失败：${error.message}`);
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [token]);
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setMessage("");
+    try {
+      await submitPublicIntake({ token, form });
+      setSubmitted(true);
+      setMessage("提交成功，我们会尽快联系你。");
+      setForm({ name: "", phone: "", email: "", address: "", requirement: "", notes: "" });
+    } catch (error) {
+      console.error(error);
+      setMessage(`提交失败：${error.message}`);
+    }
+  }
+
+  if (loading) {
+    return <div style={{ padding: 24 }}>加载中...</div>;
+  }
+
+  if (!profile) {
+    return (
+      <div style={{ minHeight: "100vh", background: "#f8fafc", display: "grid", placeItems: "center", padding: 24 }}>
+        <div style={{ maxWidth: 560, background: "#fff", border: "1px solid #e5e7eb", borderRadius: 16, padding: 24 }}>
+          <h1 style={{ marginTop: 0 }}>链接不可用</h1>
+          <p style={{ color: "#475569" }}>这个 intake 页面不存在，或者已经被停用。</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ minHeight: "100vh", background: "#f8fafc", padding: 24 }}>
+      <div style={{ maxWidth: 720, margin: "0 auto", display: "grid", gap: 16 }}>
+        <div style={{ textAlign: "center", marginTop: 24 }}>
+          <h1 style={{ marginBottom: 8 }}>{profile.form_title || "Customer Information"}</h1>
+          <p style={{ color: "#475569", margin: 0 }}>{profile.intro_text || "Please tell us what you need."}</p>
+        </div>
+
+        <form onSubmit={handleSubmit} style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 16, padding: 20, display: "grid", gap: 12 }}>
+          <input required placeholder="Your name" value={form.name} onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))} />
+          <input placeholder="Phone" value={form.phone} onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))} />
+          <input type="email" placeholder="Email" value={form.email} onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))} />
+          <textarea placeholder="Address" rows={2} value={form.address} onChange={(e) => setForm((prev) => ({ ...prev, address: e.target.value }))} />
+          <textarea required placeholder="What do you need help with?" rows={4} value={form.requirement} onChange={(e) => setForm((prev) => ({ ...prev, requirement: e.target.value }))} />
+          <textarea placeholder="Extra notes" rows={3} value={form.notes} onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))} />
+          <button type="submit">Submit</button>
+          {message ? <div style={{ color: submitted ? "#166534" : "#b45309", fontSize: 14 }}>{message}</div> : null}
+        </form>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
+  const pathname = typeof window !== "undefined" ? window.location.pathname : "/";
+  const publicToken = pathname.startsWith("/intake/") ? pathname.replace("/intake/", "").trim() : "";
+  const isPublicIntakeMode = Boolean(publicToken);
+
   const [contacts, setContacts] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [savedLocations, setSavedLocations] = useState([]);
@@ -67,8 +161,10 @@ export default function App() {
   });
 
   useEffect(() => {
-    loadInitialData();
-  }, []);
+    if (!isPublicIntakeMode) {
+      loadInitialData();
+    }
+  }, [isPublicIntakeMode]);
 
   async function loadInitialData() {
     setLoading(true);
@@ -363,6 +459,10 @@ export default function App() {
 
   const intakeUrl = intakeProfile ? `${window.location.origin}/intake/${intakeProfile.intake_token}` : "";
 
+  if (isPublicIntakeMode) {
+    return <PublicIntakeScreen token={publicToken} />;
+  }
+
   if (loading) {
     return <div style={{ padding: 24 }}>加载中...</div>;
   }
@@ -374,7 +474,7 @@ export default function App() {
           <div>
             <h1 style={{ margin: 0, fontSize: 28 }}>Voice CRM</h1>
             <p style={{ margin: "8px 0 0", color: "#475569" }}>
-              旧仓库修复第三阶段：补业务闭环，加入 intake 配置与导出能力。
+              旧仓库修复第四阶段：补公开 intake 页面，让线索公开提交链路真正跑通。
             </p>
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -644,8 +744,15 @@ export default function App() {
                   <strong>Public URL</strong>
                   <div style={{ color: "#475569", marginTop: 4, wordBreak: "break-all" }}>{intakeUrl || "当前不可用"}</div>
                 </div>
+                <div>
+                  <button onClick={() => {
+                    if (!intakeUrl) return;
+                    navigator.clipboard.writeText(intakeUrl);
+                    setMessage("Intake 链接已复制");
+                  }}>复制链接</button>
+                </div>
                 <div style={{ color: "#64748b", fontSize: 14 }}>
-                  说明：当前仓库第三阶段先补了 intake profile 配置能力；真正的 /intake/:token 页面还需要在下一阶段补成完整公开表单。
+                  现在 `/intake/:token` 页面已经补上，可直接对外收集线索并写入 contacts。
                 </div>
               </div>
             </Section>

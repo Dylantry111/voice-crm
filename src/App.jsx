@@ -290,12 +290,12 @@ export default function App() {
   const intakeUrl = intakeProfile ? `${window.location.origin}/intake/${intakeProfile.intake_token}` : "";
 
   if (isPublicIntakeMode) return <Suspense fallback={<div style={{ padding: 24 }}>加载中...</div>}><PublicIntakeScreen token={publicToken} /></Suspense>;
-  if (loading) return <div style={{ padding: 24 }}>加载中...</div>;
+  if (loading) return <div className="app-shell"><div className="skeleton" style={{height: 80}} /><div className="metric-grid"><div className="skeleton" style={{height: 120}} /><div className="skeleton" style={{height: 120}} /><div className="skeleton" style={{height: 120}} /></div><div className="skeleton" style={{height: 360}} /></div>;
 
   return (
     <div style={ui.page}>
-      <div style={ui.shell}>
-        <div style={{ ...ui.sectionMuted, padding: 20, display: "flex", justifyContent: "space-between", gap: 16, alignItems: "center", flexWrap: "wrap" }}>
+      <div className="app-shell">
+        <div className="topbar" style={{ ...ui.sectionMuted, padding: 20 }}>
           <div>
             <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: "-0.04em" }}>Voice CRM</div>
             <div style={{ marginTop: 6, color: "#64748b", fontSize: 14 }}>Lead capture · bookings · public intake</div>
@@ -310,7 +310,7 @@ export default function App() {
         {message ? <div style={{ background: "#eff6ff", border: "1px solid #bfdbfe", color: "#1d4ed8", borderRadius: 14, padding: 12 }}>{message}</div> : null}
 
         {(activeTab === "dashboard" || activeTab === "contacts" || activeTab === "calendar") && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+          <div className="metric-grid">
             <MetricCard title="联系人" value={contacts.length} hint="可搜索、可编辑、可导出" />
             <MetricCard title="预约" value={bookings.length} hint="支持创建 / 编辑 / 删除" />
             <MetricCard title="常用地址" value={savedLocations.length} hint="用于预约快速选址" />
@@ -319,9 +319,9 @@ export default function App() {
         )}
 
         {activeTab === "dashboard" && (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+          <div className="dashboard-grid">
             <Section title="快捷动作" muted>
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <div className="action-row">
                 <button style={ui.primaryBtn} onClick={() => setActiveTab("capture")}>录入新联系人</button>
                 <button style={ui.secondaryBtn} onClick={() => setActiveTab("calendar")}>创建预约</button>
                 <button style={ui.secondaryBtn} onClick={handleExportContacts}>导出联系人</button>
@@ -329,7 +329,7 @@ export default function App() {
               </div>
             </Section>
             <Section title="最近联系人">
-              <div style={{ display: "grid", gap: 10 }}>
+              <div className="card-stack-tight">
                 {contacts.slice(0, 5).map((contact) => (
                   <div key={contact.id} style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", border: "1px solid #eef2f7", borderRadius: 12, padding: 12 }}>
                     <div>
@@ -346,9 +346,9 @@ export default function App() {
 
         {activeTab === "capture" && (
           <Section title="语音转联系人草稿" right={<button style={ui.secondaryBtn} onClick={fillFromVoice}>智能填充</button>}>
-            <div style={{ display: "grid", gap: 12 }}>
+            <div className="list-stack">
               <textarea style={ui.textarea} value={voiceInput} onChange={(e) => setVoiceInput(e.target.value)} rows={5} />
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
+              <div className="field-grid-fit">
                 <input style={ui.input} placeholder="姓名" value={draft.name || ""} onChange={(e) => setDraft((prev) => ({ ...prev, name: e.target.value }))} />
                 <input style={ui.input} placeholder="电话" value={draft.phone || ""} onChange={(e) => setDraft((prev) => ({ ...prev, phone: e.target.value }))} />
                 <input style={ui.input} placeholder="邮箱" value={draft.email || ""} onChange={(e) => setDraft((prev) => ({ ...prev, email: e.target.value }))} />
@@ -356,7 +356,7 @@ export default function App() {
                 <input style={ui.input} placeholder="需求" value={draft.requirement || ""} onChange={(e) => setDraft((prev) => ({ ...prev, requirement: e.target.value }))} />
               </div>
               {duplicateResult.hasDuplicate ? <div style={{ fontSize: 13, color: "#92400e", background: "#fef3c7", borderRadius: 10, padding: 10 }}>发现疑似重复：{duplicateResult.matches.map((m) => m.contact.name).join("，")}</div> : null}
-              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <div className="action-row">
                 <button style={ui.primaryBtn} onClick={handleCreateContact}>保存联系人</button>
                 <button style={ui.secondaryBtn} onClick={() => setActiveTab("contacts")}>去联系人页</button>
               </div>
@@ -365,10 +365,10 @@ export default function App() {
         )}
 
         {activeTab === "contacts" && (
-          <div style={{ display: "grid", gridTemplateColumns: "0.95fr 1.05fr", gap: 16, alignItems: "start" }}>
+          <div className="contacts-grid">
             <Section title="联系人列表" right={<div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><input style={ui.input} placeholder="搜索联系人" value={query} onChange={(e) => setQuery(e.target.value)} /><button style={ui.secondaryBtn} onClick={handleExportContacts}>导出 CSV</button></div>}>
-              <div style={{ display: "grid", gap: 12 }}>
-                {filteredContacts.length === 0 ? <div style={{ color: "#64748b" }}>暂无联系人</div> : filteredContacts.map((contact) => (
+              <div className="list-stack">
+                {filteredContacts.length === 0 ? <div className="empty-state">暂无联系人</div> : filteredContacts.map((contact) => (
                   <button key={contact.id} onClick={() => { setSelectedContactId(contact.id); resetBookingForm(contact); }} style={{ textAlign: "left", border: selectedContact?.id === contact.id ? "1px solid #0f172a" : "1px solid #e5e7eb", borderRadius: 16, padding: 14, background: selectedContact?.id === contact.id ? "#f8fafc" : "#fff" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
                       <strong style={{ fontSize: 15 }}>{contact.name || "Unnamed"}</strong>
@@ -383,9 +383,9 @@ export default function App() {
             </Section>
 
             <Section title={selectedContact ? `联系人详情 · ${selectedContact.name}` : "联系人详情"}>
-              {!selectedContact ? <div style={{ color: "#64748b" }}>请选择联系人</div> : (
+              {!selectedContact ? <div className="empty-state">请选择联系人</div> : (
                 <div style={{ display: "grid", gap: 16 }}>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                  <div className="field-grid-2">
                     <input style={ui.input} value={selectedContact.name || ""} onChange={(e) => updateSelectedContactField("name", e.target.value)} placeholder="姓名" />
                     <input style={ui.input} value={selectedContact.phone || ""} onChange={(e) => updateSelectedContactField("phone", e.target.value)} placeholder="电话" />
                     <input style={ui.input} value={selectedContact.email || ""} onChange={(e) => updateSelectedContactField("email", e.target.value)} placeholder="邮箱" />
@@ -394,7 +394,7 @@ export default function App() {
                   <textarea style={ui.textarea} value={selectedContact.address || ""} onChange={(e) => updateSelectedContactField("address", e.target.value)} placeholder="地址" rows={2} />
                   <textarea style={ui.textarea} value={selectedContact.requirement || ""} onChange={(e) => updateSelectedContactField("requirement", e.target.value)} placeholder="需求" rows={2} />
                   <textarea style={ui.textarea} value={selectedContact.notes || ""} onChange={(e) => updateSelectedContactField("notes", e.target.value)} placeholder="备注" rows={4} />
-                  <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                  <div className="action-row">
                     <button style={ui.primaryBtn} onClick={handleSaveContactDetails}>保存联系人</button>
                     <button style={ui.secondaryBtn} onClick={() => handleMarkContact(selectedContact, "Contacted")}>标记 Contacted</button>
                     <button style={ui.secondaryBtn} onClick={() => handleMarkContact(selectedContact, "Quoted")}>标记 Quoted</button>
@@ -402,8 +402,8 @@ export default function App() {
                   </div>
                   <div>
                     <strong style={{ display: "block", marginBottom: 10 }}>该联系人预约</strong>
-                    <div style={{ display: "grid", gap: 10 }}>
-                      {contactBookings.length === 0 ? <div style={{ color: "#64748b" }}>暂无预约</div> : contactBookings.map((booking) => (
+                    <div className="card-stack-tight">
+                      {contactBookings.length === 0 ? <div className="empty-state">暂无预约</div> : contactBookings.map((booking) => (
                         <div key={booking.id} style={{ border: "1px solid #e5e7eb", borderRadius: 14, padding: 12, background: "#fcfdff" }}>
                           <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center" }}>
                             <strong>{booking.event_type}</strong>
@@ -425,9 +425,9 @@ export default function App() {
         )}
 
         {activeTab === "calendar" && (
-          <div style={{ display: "grid", gridTemplateColumns: "0.9fr 1.1fr", gap: 16, alignItems: "start" }}>
+          <div className="calendar-grid">
             <Section title={editingBookingId ? "编辑预约" : "创建预约"} right={<div style={{ display: "flex", gap: 8 }}><button style={ui.secondaryBtn} onClick={() => resetBookingForm(selectedContact)}>重置</button><button style={ui.secondaryBtn} onClick={handleExportBookings}>导出 CSV</button></div>}>
-              <div style={{ display: "grid", gap: 10 }}>
+              <div className="card-stack-tight">
                 <select style={ui.select} value={bookingForm.contact_id} onChange={(e) => { const contact = contacts.find((item) => item.id === e.target.value); setBookingForm((prev) => ({ ...prev, contact_id: e.target.value, location_address: contact?.address || prev.location_address })); }}>
                   <option value="">选择联系人</option>
                   {contacts.map((contact) => <option key={contact.id} value={contact.id}>{contact.name} {contact.phone ? `- ${contact.phone}` : ""}</option>)}
@@ -450,8 +450,8 @@ export default function App() {
             </Section>
 
             <Section title="预约列表">
-              <div style={{ display: "grid", gap: 12 }}>
-                {bookings.length === 0 ? <div style={{ color: "#64748b" }}>暂无预约</div> : bookings.slice().sort((a, b) => new Date(a.start_time) - new Date(b.start_time)).map((booking) => {
+              <div className="list-stack">
+                {bookings.length === 0 ? <div className="empty-state">暂无预约</div> : bookings.slice().sort((a, b) => new Date(a.start_time) - new Date(b.start_time)).map((booking) => {
                   const contact = contacts.find((item) => item.id === booking.contact_id);
                   return (
                     <div key={booking.id} style={{ border: "1px solid #e5e7eb", borderRadius: 16, padding: 14, background: "#fff" }}>
@@ -475,9 +475,9 @@ export default function App() {
         )}
 
         {activeTab === "intake" && (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, alignItems: "start" }}>
+          <div className="intake-grid">
             <Section title="公开 Intake 配置" muted>
-              <div style={{ display: "grid", gap: 12 }}>
+              <div className="list-stack">
                 <label style={{ display: "flex", gap: 8, alignItems: "center", color: "#334155", fontWeight: 600 }}>
                   <input type="checkbox" checked={intakeDraft.is_enabled} onChange={(e) => setIntakeDraft((prev) => ({ ...prev, is_enabled: e.target.checked }))} /> 启用公开 Intake 页面
                 </label>
@@ -487,7 +487,7 @@ export default function App() {
               </div>
             </Section>
             <Section title="Intake 链接与说明">
-              <div style={{ display: "grid", gap: 10 }}>
+              <div className="card-stack-tight">
                 <div><strong>Token</strong><div style={{ color: "#475569", marginTop: 4 }}>{intakeProfile?.intake_token || "未生成"}</div></div>
                 <div><strong>Public URL</strong><div style={{ color: "#475569", marginTop: 4, wordBreak: "break-all" }}>{intakeUrl || "当前不可用"}</div></div>
                 <div><button style={ui.secondaryBtn} onClick={() => { if (!intakeUrl) return; navigator.clipboard.writeText(intakeUrl); setMessage("Intake 链接已复制"); }}>复制链接</button></div>
@@ -498,9 +498,9 @@ export default function App() {
         )}
 
         {activeTab === "settings" && (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, alignItems: "start" }}>
+          <div className="intake-grid">
             <Section title="Settings 持久化（本地浏览器）" muted>
-              <div style={{ display: "grid", gap: 12 }}>
+              <div className="list-stack">
                 <div>
                   <div style={{ fontSize: 13, color: "#64748b", marginBottom: 6 }}>状态列表（每行一个）</div>
                   <textarea style={ui.textarea} rows={6} value={(settingsDraft.statusOptions || []).join("\n")} onChange={(e) => updateSettingsList("statusOptions", e.target.value)} />

@@ -1,19 +1,24 @@
 import React, { useEffect, useState } from "react";
 import { fetchPublicIntakeProfileByToken, submitPublicIntake } from "../services/publicIntakeService";
 
+const styles = {
+  shell: { minHeight: "100vh", background: "linear-gradient(180deg, #f8fafc 0%, #eef4ff 100%)", padding: 24 },
+  wrap: { maxWidth: 720, margin: "0 auto", display: "grid", gap: 16 },
+  hero: { textAlign: "center", marginTop: 24 },
+  brand: { fontSize: 14, color: "#2563eb", fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase" },
+  card: { background: "#fff", border: "1px solid #e2e8f0", borderRadius: 20, padding: 22, display: "grid", gap: 14, boxShadow: "0 18px 40px rgba(15,23,42,0.08)" },
+  input: { width: "100%", height: 44, borderRadius: 12, border: "1px solid #cbd5e1", padding: "0 12px", background: "#fff", color: "#0f172a" },
+  textarea: { width: "100%", borderRadius: 12, border: "1px solid #cbd5e1", padding: 12, background: "#fff", color: "#0f172a", resize: "vertical" },
+  primaryBtn: { background: "#0f172a", color: "#fff", border: "1px solid #0f172a", borderRadius: 12, padding: "11px 14px", fontWeight: 700 },
+  muted: { color: "#64748b", fontSize: 14 },
+};
+
 export default function PublicIntakeScreen({ token }) {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [submitted, setSubmitted] = useState(false);
-  const [form, setForm] = useState({
-    name: "",
-    phone: "",
-    email: "",
-    address: "",
-    requirement: "",
-    notes: "",
-  });
+  const [form, setForm] = useState({ name: "", phone: "", email: "", address: "", requirement: "", notes: "" });
 
   useEffect(() => {
     let active = true;
@@ -29,9 +34,7 @@ export default function PublicIntakeScreen({ token }) {
         if (active) setLoading(false);
       }
     })();
-    return () => {
-      active = false;
-    };
+    return () => { active = false; };
   }, [token]);
 
   async function handleSubmit(e) {
@@ -49,7 +52,14 @@ export default function PublicIntakeScreen({ token }) {
   }
 
   if (loading) {
-    return <div style={{ padding: 24 }}>加载中...</div>;
+    return (
+      <div style={styles.shell}>
+        <div style={styles.wrap}>
+          <div className="skeleton" style={{ height: 48, borderRadius: 14 }} />
+          <div className="skeleton" style={{ height: 360, borderRadius: 20 }} />
+        </div>
+      </div>
+    );
   }
 
   if (!profile) {
@@ -57,29 +67,32 @@ export default function PublicIntakeScreen({ token }) {
       <div style={{ minHeight: "100vh", background: "#f8fafc", display: "grid", placeItems: "center", padding: 24 }}>
         <div style={{ maxWidth: 560, background: "#fff", border: "1px solid #e5e7eb", borderRadius: 16, padding: 24 }}>
           <h1 style={{ marginTop: 0 }}>链接不可用</h1>
-          <p style={{ color: "#475569" }}>这个 intake 页面不存在，或者已经被停用。</p>
+          <p style={styles.muted}>这个 intake 页面不存在，或者已经被停用。</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "#f8fafc", padding: 24 }}>
-      <div style={{ maxWidth: 720, margin: "0 auto", display: "grid", gap: 16 }}>
-        <div style={{ textAlign: "center", marginTop: 24 }}>
-          <h1 style={{ marginBottom: 8 }}>{profile.form_title || "Customer Information"}</h1>
-          <p style={{ color: "#475569", margin: 0 }}>{profile.intro_text || "Please tell us what you need."}</p>
+    <div style={styles.shell}>
+      <div style={styles.wrap}>
+        <div style={styles.hero}>
+          <div style={styles.brand}>Voice CRM Intake</div>
+          <h1 style={{ marginBottom: 8, fontSize: 34, letterSpacing: "-0.04em" }}>{profile.form_title || "Customer Information"}</h1>
+          <p style={{ color: "#475569", margin: 0, fontSize: 16 }}>{profile.intro_text || "Please tell us what you need."}</p>
         </div>
 
-        <form onSubmit={handleSubmit} style={{ background: "#fff", border: "1px solid #e5e7eb", borderRadius: 16, padding: 20, display: "grid", gap: 12 }}>
-          <input required placeholder="Your name" value={form.name} onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))} />
-          <input placeholder="Phone" value={form.phone} onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))} />
-          <input type="email" placeholder="Email" value={form.email} onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))} />
-          <textarea placeholder="Address" rows={2} value={form.address} onChange={(e) => setForm((prev) => ({ ...prev, address: e.target.value }))} />
-          <textarea required placeholder="What do you need help with?" rows={4} value={form.requirement} onChange={(e) => setForm((prev) => ({ ...prev, requirement: e.target.value }))} />
-          <textarea placeholder="Extra notes" rows={3} value={form.notes} onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))} />
-          <button type="submit">Submit</button>
-          {message ? <div style={{ color: submitted ? "#166534" : "#b45309", fontSize: 14 }}>{message}</div> : null}
+        <form onSubmit={handleSubmit} style={styles.card}>
+          <div className="field-grid-2">
+            <input style={styles.input} required placeholder="Your name" value={form.name} onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))} />
+            <input style={styles.input} placeholder="Phone" value={form.phone} onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))} />
+          </div>
+          <input style={styles.input} type="email" placeholder="Email" value={form.email} onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))} />
+          <textarea style={styles.textarea} placeholder="Address" rows={2} value={form.address} onChange={(e) => setForm((prev) => ({ ...prev, address: e.target.value }))} />
+          <textarea style={styles.textarea} required placeholder="What do you need help with?" rows={4} value={form.requirement} onChange={(e) => setForm((prev) => ({ ...prev, requirement: e.target.value }))} />
+          <textarea style={styles.textarea} placeholder="Extra notes" rows={3} value={form.notes} onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))} />
+          <button style={styles.primaryBtn} type="submit">Submit</button>
+          {message ? <div style={{ color: submitted ? "#166534" : "#b45309", fontSize: 14, background: submitted ? "#dcfce7" : "#fef3c7", borderRadius: 12, padding: 10 }}>{message}</div> : null}
         </form>
       </div>
     </div>

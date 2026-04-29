@@ -112,8 +112,109 @@ button:active { transform: translateY(0); }
   padding: 12px;
   background: #fcfdff;
 }
-.booking-notes-mobile {
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+.workspace-hero-app {
+  border-radius: 26px;
+}
+
+.app-tabbar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 6px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.78);
+  border: 1px solid #e2e8f0;
+}
+
+.app-tab {
+  border: none;
+  background: transparent;
+  color: #475569;
+  border-radius: 999px;
+  padding: 11px 15px;
+  font-weight: 700;
+}
+
+.app-tab.is-active {
+  background: #0f172a;
+  color: #fff;
+  box-shadow: 0 10px 20px rgba(15,23,42,0.12);
+}
+
+.app-toast {
+  position: sticky;
+  top: 16px;
+  z-index: 9;
+  background: rgba(239,246,255,0.92);
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+  border-radius: 16px;
+  padding: 12px 14px;
+  box-shadow: 0 10px 24px rgba(37,99,235,0.10);
+  backdrop-filter: blur(10px);
+}
+
+.app-inline-alert {
+  font-size: 14px;
+  border-radius: 14px;
+  padding: 10px 12px;
+}
+
+.intake-link-card {
+  display: grid;
+  gap: 12px;
+  border: 1px solid #dbeafe;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  border-radius: 20px;
+  padding: 16px;
+}
+
+.intake-link-label {
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #2563eb;
+}
+
+.intake-link-value {
+  color: #0f172a;
+  font-weight: 600;
+  word-break: break-all;
+}
+
+.intake-link-hint {
+  color: #64748b;
+  font-size: 14px;
+}
+
+.booking-sheet {
+  background: linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,250,252,1) 100%);
+}
+
+.booking-sheet-header {
+  position: sticky;
+  top: 0;
+  background: rgba(255,255,255,0.92);
+  backdrop-filter: blur(10px);
+  z-index: 2;
+}
+
+.booking-sheet-title {
+  letter-spacing: -0.02em;
+}
+
+.booking-sheet-body {
+  scrollbar-gutter: stable;
+}
+
+.booking-sheet-actions {
+  position: sticky;
+  bottom: 0;
+  padding-top: 8px;
+  background: linear-gradient(180deg, rgba(248,250,252,0) 0%, rgba(248,250,252,0.96) 28%);
 }
 
 .empty-state {
@@ -435,6 +536,16 @@ button:active { transform: translateY(0); }
   .app-shell { padding: 16px; }
   .topbar { align-items: stretch; }
   .tabbar-wrap { width: 100%; justify-content: flex-start !important; }
+  .app-tabbar {
+    width: 100%;
+    overflow-x: auto;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    padding: 6px;
+  }
+  .app-tab {
+    white-space: nowrap;
+  }
   .action-row,
   .mobile-action-stack { flex-direction: column; }
   .action-row > *,
@@ -462,6 +573,10 @@ button:active { transform: translateY(0); }
   .timeline-inline-btn {
     width: 100%;
     text-align: center;
+  }
+  .booking-sheet-actions {
+    display: grid;
+    grid-template-columns: 1fr;
   }
 }
 

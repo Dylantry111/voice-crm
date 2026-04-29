@@ -2,14 +2,14 @@ import React, { useEffect, useState } from "react";
 import { fetchPublicIntakeProfileByToken, submitPublicIntake } from "../services/publicIntakeService";
 
 const styles = {
-  shell: { minHeight: "100vh", background: "linear-gradient(180deg, #f8fafc 0%, #eef4ff 100%)", padding: 24 },
+  shell: { minHeight: "100vh", background: "linear-gradient(180deg, #f8fafc 0%, #eef4ff 100%)", padding: 20 },
   wrap: { maxWidth: 720, margin: "0 auto", display: "grid", gap: 16 },
-  hero: { textAlign: "center", marginTop: 24 },
+  hero: { textAlign: "center", marginTop: 12 },
   brand: { fontSize: 14, color: "#2563eb", fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase" },
-  card: { background: "#fff", border: "1px solid #e2e8f0", borderRadius: 20, padding: 22, display: "grid", gap: 14, boxShadow: "0 18px 40px rgba(15,23,42,0.08)" },
-  input: { width: "100%", height: 44, borderRadius: 12, border: "1px solid #cbd5e1", padding: "0 12px", background: "#fff", color: "#0f172a" },
-  textarea: { width: "100%", borderRadius: 12, border: "1px solid #cbd5e1", padding: 12, background: "#fff", color: "#0f172a", resize: "vertical" },
-  primaryBtn: { background: "#0f172a", color: "#fff", border: "1px solid #0f172a", borderRadius: 12, padding: "11px 14px", fontWeight: 700 },
+  card: { background: "#fff", border: "1px solid #e2e8f0", borderRadius: 24, padding: 22, display: "grid", gap: 14, boxShadow: "0 18px 40px rgba(15,23,42,0.08)" },
+  input: { width: "100%", height: 48, borderRadius: 14, border: "1px solid #cbd5e1", padding: "0 14px", background: "#fff", color: "#0f172a" },
+  textarea: { width: "100%", borderRadius: 14, border: "1px solid #cbd5e1", padding: 14, background: "#fff", color: "#0f172a", resize: "vertical" },
+  primaryBtn: { background: "#0f172a", color: "#fff", border: "1px solid #0f172a", borderRadius: 14, padding: "12px 16px", fontWeight: 700 },
   muted: { color: "#64748b", fontSize: 14 },
 };
 
@@ -82,8 +82,17 @@ export default function PublicIntakeScreen({ token }) {
           <p style={{ color: "#475569", margin: 0, fontSize: 16 }}>{profile.intro_text || "Please tell us what you need."}</p>
         </div>
 
+        <div style={{ ...styles.card, gap: 10, background: "linear-gradient(180deg, #ffffff 0%, #f8fbff 100%)" }}>
+          <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: "0.06em", textTransform: "uppercase", color: "#2563eb" }}>
+            Quick Intake
+          </div>
+          <div style={{ color: "#475569", fontSize: 14 }}>
+            Fill in the basics and we can contact you quickly to confirm the next step or booking.
+          </div>
+        </div>
+
         <form onSubmit={handleSubmit} style={styles.card}>
-          <div className="field-grid-2">
+          <div className="field-grid-2 mobile-single-grid">
             <input style={styles.input} required placeholder="Your name" value={form.name} onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))} />
             <input style={styles.input} placeholder="Phone" value={form.phone} onChange={(e) => setForm((prev) => ({ ...prev, phone: e.target.value }))} />
           </div>
@@ -93,7 +102,7 @@ export default function PublicIntakeScreen({ token }) {
           <textarea style={styles.textarea} placeholder="Preferred time for booking (e.g. Friday afternoon / tomorrow morning)" rows={2} value={form.preferred_booking_notes} onChange={(e) => setForm((prev) => ({ ...prev, preferred_booking_notes: e.target.value }))} />
           <textarea style={styles.textarea} placeholder="Extra notes" rows={3} value={form.notes} onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))} />
           <button style={styles.primaryBtn} type="submit">Submit</button>
-          {message ? <div style={{ color: submitted ? "#166534" : "#b45309", fontSize: 14, background: submitted ? "#dcfce7" : "#fef3c7", borderRadius: 12, padding: 10 }}>{message}</div> : null}
+          {message ? <div className="app-inline-alert" style={{ color: submitted ? "#166534" : "#b45309", background: submitted ? "#dcfce7" : "#fef3c7" }}>{message}</div> : null}
         </form>
       </div>
     </div>

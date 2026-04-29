@@ -911,7 +911,7 @@ export default function App() {
   return (
     <div style={ui.page}>
       <div className="app-shell">
-        <div className="topbar workspace-hero" style={{ ...ui.sectionMuted, padding: 22 }}>
+        <div className="topbar workspace-hero workspace-hero-app" style={{ ...ui.sectionMuted, padding: 22 }}>
           <div>
             <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "#2563eb" }}>
               Voice CRM Workspace
@@ -923,16 +923,12 @@ export default function App() {
               Keep contact capture simple, move straight into scheduling, and give customers a clean intake link.
             </div>
           </div>
-          <div className="tabbar-wrap" style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", justifyContent: "flex-end" }}>
+          <div className="tabbar-wrap app-tabbar">
             {tabButtons.map(([key, label]) => (
               <button
                 key={key}
                 onClick={() => setActiveTab(key)}
-                style={
-                  activeTab === key
-                    ? { ...ui.primaryBtn, boxShadow: "0 10px 20px rgba(15,23,42,0.12)" }
-                    : ui.secondaryBtn
-                }
+                className={`app-tab ${activeTab === key ? "is-active" : ""}`}
               >
                 {label}
               </button>
@@ -941,15 +937,7 @@ export default function App() {
         </div>
 
         {message ? (
-          <div
-            style={{
-              background: "#eff6ff",
-              border: "1px solid #bfdbfe",
-              color: "#1d4ed8",
-              borderRadius: 14,
-              padding: 12,
-            }}
-          >
+          <div className="app-toast">
             {message}
           </div>
         ) : null}
@@ -1308,11 +1296,11 @@ export default function App() {
         )}
 
         {activeTab === "intake" && (
-          <div className="intake-grid">
-            <Section title="Public Intake Settings" muted description="Control what your customer-facing intake form looks like.">
+          <div className="mobile-flow-stack">
+            <Section title="Public Intake Settings" muted description="Control the customer-facing form, then share one clean public link.">
               <div className="list-stack">
                 <label
-                  style={{ display: "flex", gap: 8, alignItems: "center", color: "#334155", fontWeight: 600 }}
+                  style={{ display: "flex", gap: 10, alignItems: "center", color: "#334155", fontWeight: 600 }}
                 >
                   <input
                     type="checkbox"
@@ -1332,7 +1320,7 @@ export default function App() {
                   placeholder="Form title"
                 />
                 <textarea
-                  style={ui.textarea}
+                  style={{ ...ui.textarea, minHeight: 120 }}
                   value={intakeDraft.intro_text}
                   onChange={(e) =>
                     setIntakeDraft((prev) => ({ ...prev, intro_text: e.target.value }))
@@ -1340,20 +1328,21 @@ export default function App() {
                   rows={5}
                   placeholder="Intro copy"
                 />
-                <button style={ui.primaryBtn} onClick={handleSaveIntakeProfile}>
-                  Save Intake Settings
-                </button>
+                <div className="action-row mobile-action-stack">
+                  <button style={ui.primaryBtn} onClick={handleSaveIntakeProfile}>
+                    Save Intake Settings
+                  </button>
+                </div>
               </div>
             </Section>
-            <Section title="Intake Link" description="Share this link with customers so they can submit details directly into CRM.">
-              <div className="card-stack-tight">
-                <div>
-                  <strong>Public URL</strong>
-                  <div style={{ color: "#475569", marginTop: 4, wordBreak: "break-all" }}>
-                    {intakeUrl || "Unavailable"}
-                  </div>
+
+            <Section title="Intake Link" description="Share this page with customers so they can submit details directly into CRM from their phone.">
+              <div className="intake-link-card">
+                <div className="intake-link-label">Public URL</div>
+                <div className="intake-link-value">
+                  {intakeUrl || "Unavailable"}
                 </div>
-                <div>
+                <div className="action-row mobile-action-stack">
                   <button
                     style={ui.secondaryBtn}
                     onClick={() => {
@@ -1365,7 +1354,7 @@ export default function App() {
                     Copy Link
                   </button>
                 </div>
-                <div style={{ color: "#64748b", fontSize: 14 }}>
+                <div className="intake-link-hint">
                   Customers can open this link anonymously and submit their details, including booking time preferences.
                 </div>
               </div>

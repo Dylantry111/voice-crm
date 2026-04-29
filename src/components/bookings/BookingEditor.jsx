@@ -132,10 +132,10 @@ export default function BookingEditor({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-slate-900/40 p-0 md:items-center md:p-4">
-      <div className="max-h-[92vh] w-full overflow-hidden rounded-t-3xl bg-white shadow-2xl md:max-w-5xl md:rounded-3xl">
-        <div className="flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-4 md:px-6">
+      <div className="booking-sheet max-h-[92vh] w-full overflow-hidden rounded-t-3xl bg-white shadow-2xl md:max-w-5xl md:rounded-3xl">
+        <div className="booking-sheet-header flex items-center justify-between gap-3 border-b border-slate-200 px-5 py-4 md:px-6">
           <div>
-            <div className="text-lg font-semibold">{isEdit ? "Edit Booking" : "Create Booking"}</div>
+            <div className="booking-sheet-title text-lg font-semibold">{isEdit ? "Edit Booking" : "Create Booking"}</div>
             <div className="mt-1 text-sm text-slate-500">
               {isCustomerCreate
                 ? "Customer is already selected. Choose an event and pick a suitable time from the calendar."
@@ -149,7 +149,7 @@ export default function BookingEditor({
           </button>
         </div>
 
-        <div className="max-h-[calc(92vh-72px)] overflow-y-auto px-5 py-5 md:px-6">
+        <div className="booking-sheet-body max-h-[calc(92vh-72px)] overflow-y-auto px-5 py-5 md:px-6">
           <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
             <div className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-1">
@@ -250,7 +250,7 @@ export default function BookingEditor({
                 onChange={onChange}
               />
 
-              <div className="flex gap-3">
+              <div className="booking-sheet-actions flex gap-3">
                 <button onClick={onSave} className="rounded-2xl bg-slate-900 px-4 py-3 text-sm font-medium text-white">
                   {isEdit ? "Save Changes" : "Create Booking"}
                 </button>

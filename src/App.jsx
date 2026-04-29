@@ -12,7 +12,7 @@ import {
   fetchOrCreateMyIntakeProfile,
   updateMyIntakeProfile,
 } from "./services/publicIntakeService";
-import { loadSettings, saveSettings } from "./services/settingsService";
+import { loadSettings, saveSettings, DEFAULT_SETTINGS } from "./services/settingsService";
 import { supabase } from "./lib/supabase";
 import { smartFill } from "./lib/parsers/contactParser";
 import {
@@ -23,6 +23,7 @@ import { ALL_TIME_SLOTS } from "./lib/constants";
 import { formatDateInputValue } from "./lib/dateUtils";
 import BookingEditor from "./components/bookings/BookingEditor";
 import DayTimeline from "./components/bookings/DayTimeline";
+import SettingsPage from "./pages/SettingsPage.jsx";
 
 const PublicIntakeScreen = lazy(() => import("./pages/PublicIntakeScreen.jsx"));
 
@@ -277,6 +278,8 @@ export default function App() {
     tagOptions: [],
     eventTypesText: "",
     savedLocationsText: "",
+    eventTypes: [],
+    savedLocations: [],
   });
   const [calendarDate, setCalendarDate] = useState(formatDateInputValue(new Date()));
   const [selectedSlot, setSelectedSlot] = useState("");
@@ -344,6 +347,8 @@ export default function App() {
         tagOptions: settingsData?.tagOptions || [],
         eventTypesText: eventTypesToText(settingsData?.eventTypes || []),
         savedLocationsText: savedLocationsToText(mergedSavedLocations),
+        eventTypes: settingsData?.eventTypes || [],
+        savedLocations: mergedSavedLocations,
       });
       if (!selectedContactId && contactRows[0]?.id) setSelectedContactId(contactRows[0].id);
       if (settingsData?.eventTypes?.[0]?.name) {
@@ -688,6 +693,100 @@ export default function App() {
     setSettingsDraft((prev) => ({ ...prev, [field]: value }));
   }
 
+  function syncStructuredSettings(patch) {
+    setSettingsDraft((prev) => {
+      const next = { ...prev, ...patch };
+      const eventTypes = patch.eventTypes ?? next.eventTypes ?? parseEventTypesInput(next.eventTypesText || "");
+      const savedLocations = patch.savedLocations ?? next.savedLocations ?? parseSavedLocationsInput(next.savedLocationsText || "");
+      return {
+        ...next,
+        eventTypes,
+        savedLocations,
+        eventTypesText: eventTypesToText(eventTypes),
+        savedLocationsText: savedLocationsToText(savedLocations),
+      };
+    });
+  }
+
+  function addStatusOption(name) {
+    if (!name) return;
+    if ((settingsDraft.statusOptions || []).includes(name)) return;
+    setSettingsDraft((prev) => ({
+      ...prev,
+      statusOptions: [...(prev.statusOptions || []), name],
+    }));
+  }
+
+  function editStatusOption(index, name) {
+    if (!name) return;
+    setSettingsDraft((prev) => ({
+      ...prev,
+      statusOptions: (prev.statusOptions || []).map((item, i) => (String(i) === String(index) ? name : item)),
+    }));
+  }
+
+  function addTagOption(name) {
+    if (!name) return;
+    if ((settingsDraft.tagOptions || []).includes(name)) return;
+    setSettingsDraft((prev) => ({
+      ...prev,
+      tagOptions: [...(prev.tagOptions || []), name],
+    }));
+  }
+
+  function removeTagOption(index) {
+    setSettingsDraft((prev) => ({
+      ...prev,
+      tagOptions: (prev.tagOptions || []).filter((_, i) => String(i) !== String(index)),
+    }));
+  }
+
+  function addEventType(name, minutes) {
+    const next = [
+      ...(settingsDraft.eventTypes || []),
+      { id: `event-${Date.now()}`, name, minutes: Number(minutes) || 60, isActive: true },
+    ];
+    syncStructuredSettings({ eventTypes: next });
+  }
+
+  function editEventType(id, name, minutes) {
+    const next = (settingsDraft.eventTypes || []).map((item) =>
+      item.id === id ? { ...item, name, minutes: Number(minutes) || 60 } : item
+    );
+    syncStructuredSettings({ eventTypes: next });
+  }
+
+  function removeEventType(id) {
+    const next = (settingsDraft.eventTypes || []).filter((item) => item.id !== id);
+    syncStructuredSettings({ eventTypes: next });
+  }
+
+  function addSavedLocation(location) {
+    const next = [
+      ...(settingsDraft.savedLocations || []),
+      { id: `location-${Date.now()}`, ...location, isActive: true },
+    ];
+    syncStructuredSettings({ savedLocations: next });
+  }
+
+  function removeSavedLocation(id) {
+    const next = (settingsDraft.savedLocations || []).filter((item) => item.id !== id);
+    syncStructuredSettings({ savedLocations: next });
+  }
+
+  function resetSettingsDefaults() {
+    const base = DEFAULT_SETTINGS;
+    setSettingsDraft({
+      statusOptions: base.statusOptions,
+      tagOptions: base.tagOptions,
+      eventTypesText: eventTypesToText(base.eventTypes),
+      savedLocationsText: savedLocationsToText(base.savedLocations),
+      eventTypes: base.eventTypes,
+      savedLocations: base.savedLocations,
+    });
+    setMessage("Settings reset to defaults. Save to apply.");
+  }
+
   async function handleSaveSettings() {
     setMessage("");
     try {
@@ -695,8 +794,8 @@ export default function App() {
         mode: "browser_local_storage",
         statusOptions: settingsDraft.statusOptions,
         tagOptions: settingsDraft.tagOptions,
-        eventTypes: parseEventTypesInput(settingsDraft.eventTypesText),
-        savedLocations: parseSavedLocationsInput(settingsDraft.savedLocationsText),
+        eventTypes: settingsDraft.eventTypes,
+        savedLocations: settingsDraft.savedLocations,
       });
       setSettings(next);
       setSavedLocations(next.savedLocations || []);
@@ -705,6 +804,8 @@ export default function App() {
         tagOptions: next.tagOptions,
         eventTypesText: eventTypesToText(next.eventTypes),
         savedLocationsText: savedLocationsToText(next.savedLocations || []),
+        eventTypes: next.eventTypes,
+        savedLocations: next.savedLocations || [],
       });
       setMessage("Settings saved locally in browser");
     } catch (error) {
@@ -914,91 +1015,104 @@ export default function App() {
         )}
 
         {activeTab === "capture" && (
-          <Section
-            title="Natural Language Quick Capture"
-            description="Paste or dictate a rough note, then auto-fill the contact form before saving."
-            right={<button style={ui.secondaryBtn} onClick={fillFromVoice}>Auto Fill</button>}
-          >
-            <div className="list-stack">
-              <textarea
-                style={ui.textarea}
-                value={voiceInput}
-                onChange={(e) => setVoiceInput(e.target.value)}
-                rows={5}
-                placeholder="Example: Wang Xiaomei, phone 13800138000, lives in Longgang Buji, available Friday afternoon, wants an on-site visit."
-              />
-              <div className="field-grid-fit">
-                <input
-                  style={ui.input}
-                  placeholder="Name"
-                  value={draft.name || ""}
-                  onChange={(e) => setDraft((prev) => ({ ...prev, name: e.target.value }))}
+          <div className="mobile-flow-stack">
+            <Section
+              title="Natural Language Quick Capture"
+              description="Paste or dictate a rough note, then auto-fill the contact form before saving."
+              right={<button style={ui.secondaryBtn} onClick={fillFromVoice}>Auto Fill</button>}
+            >
+              <div className="list-stack">
+                <textarea
+                  style={{ ...ui.textarea, minHeight: 132 }}
+                  value={voiceInput}
+                  onChange={(e) => setVoiceInput(e.target.value)}
+                  rows={6}
+                  placeholder="Example: Wang Xiaomei, phone 13800138000, lives in Longgang Buji, available Friday afternoon, wants an on-site visit."
                 />
-                <input
-                  style={ui.input}
-                  placeholder="Phone"
-                  value={draft.phone || ""}
-                  onChange={(e) => setDraft((prev) => ({ ...prev, phone: e.target.value }))}
-                />
-                <input
-                  style={ui.input}
-                  placeholder="Email"
-                  value={draft.email || ""}
-                  onChange={(e) => setDraft((prev) => ({ ...prev, email: e.target.value }))}
-                />
-                <input
-                  style={ui.input}
+                {duplicateResult.hasDuplicate ? (
+                  <div
+                    style={{
+                      fontSize: 13,
+                      color: "#92400e",
+                      background: "#fef3c7",
+                      borderRadius: 14,
+                      padding: 12,
+                      border: "1px solid #fde68a",
+                    }}
+                  >
+                    Possible duplicate found: {duplicateResult.matches.map((m) => m.contact.name).join(", ")}
+                  </div>
+                ) : null}
+              </div>
+            </Section>
+
+            <Section
+              title="Contact Preview"
+              description="Review the parsed details before saving or jumping straight into booking."
+            >
+              <div style={{ display: "grid", gap: 12 }}>
+                <div className="field-grid-2 mobile-single-grid">
+                  <input
+                    style={ui.input}
+                    placeholder="Name"
+                    value={draft.name || ""}
+                    onChange={(e) => setDraft((prev) => ({ ...prev, name: e.target.value }))}
+                  />
+                  <input
+                    style={ui.input}
+                    placeholder="Phone"
+                    value={draft.phone || ""}
+                    onChange={(e) => setDraft((prev) => ({ ...prev, phone: e.target.value }))}
+                  />
+                  <input
+                    style={ui.input}
+                    placeholder="Email"
+                    value={draft.email || ""}
+                    onChange={(e) => setDraft((prev) => ({ ...prev, email: e.target.value }))}
+                  />
+                  <input
+                    style={ui.input}
+                    placeholder="Booking preference"
+                    value={draft.preferredBookingNotes || ""}
+                    onChange={(e) =>
+                      setDraft((prev) => ({ ...prev, preferredBookingNotes: e.target.value }))
+                    }
+                  />
+                </div>
+                <textarea
+                  style={ui.textarea}
                   placeholder="Address"
                   value={draft.address || ""}
                   onChange={(e) => setDraft((prev) => ({ ...prev, address: e.target.value }))}
+                  rows={2}
                 />
-                <input
-                  style={ui.input}
+                <textarea
+                  style={ui.textarea}
                   placeholder="Requirement"
                   value={draft.requirement || ""}
                   onChange={(e) => setDraft((prev) => ({ ...prev, requirement: e.target.value }))}
+                  rows={3}
                 />
-                <input
-                  style={ui.input}
-                  placeholder="Booking preference"
-                  value={draft.preferredBookingNotes || ""}
-                  onChange={(e) =>
-                    setDraft((prev) => ({ ...prev, preferredBookingNotes: e.target.value }))
-                  }
-                />
-              </div>
-              {duplicateResult.hasDuplicate ? (
-                <div
-                  style={{
-                    fontSize: 13,
-                    color: "#92400e",
-                    background: "#fef3c7",
-                    borderRadius: 10,
-                    padding: 10,
-                  }}
-                >
-                  Possible duplicate found: {duplicateResult.matches.map((m) => m.contact.name).join(", ")}
+                <div className="action-row mobile-action-stack">
+                  <button style={ui.primaryBtn} onClick={() => handleCreateContact({ openBookingAfterSave: true })}>
+                    Save and Book
+                  </button>
+                  <button style={ui.secondaryBtn} onClick={() => handleCreateContact({ openBookingAfterSave: false })}>
+                    Save Contact Only
+                  </button>
                 </div>
-              ) : null}
-              <div className="action-row">
-                <button style={ui.primaryBtn} onClick={() => handleCreateContact({ openBookingAfterSave: true })}>
-                  Save and Book
-                </button>
-                <button style={ui.secondaryBtn} onClick={() => handleCreateContact({ openBookingAfterSave: false })}>
-                  Save Contact Only
-                </button>
               </div>
-            </div>
-          </Section>
+            </Section>
+          </div>
         )}
 
         {activeTab === "contacts" && (
-          <div className="contacts-grid">
+          <div className="mobile-flow-stack contacts-mobile-stack">
             <Section
               title="Contacts"
-              description="Search, review, and update contact details from one panel."
+              description="Search and tap a customer card to review details or book immediately."
               right={
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <div className="mobile-header-actions" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   <input
                     style={ui.input}
                     placeholder="Search contacts"
@@ -1011,7 +1125,7 @@ export default function App() {
                 </div>
               }
             >
-              <div className="list-stack">
+              <div className="contact-mobile-list">
                 {filteredContacts.length === 0 ? (
                   <div className="empty-state">No contacts yet</div>
                 ) : (
@@ -1019,26 +1133,9 @@ export default function App() {
                     <button
                       key={contact.id}
                       onClick={() => setSelectedContactId(contact.id)}
-                      style={{
-                        textAlign: "left",
-                        border:
-                          selectedContact?.id === contact.id
-                            ? "1px solid #0f172a"
-                            : "1px solid #e5e7eb",
-                        borderRadius: 16,
-                        padding: 14,
-                        background:
-                          selectedContact?.id === contact.id ? "#f8fafc" : "#fff",
-                      }}
+                      className={`contact-mobile-card ${selectedContact?.id === contact.id ? "is-active" : ""}`}
                     >
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          gap: 12,
-                          alignItems: "center",
-                        }}
-                      >
+                      <div className="contact-mobile-row">
                         <strong style={{ fontSize: 15 }}>{contact.name || "Unnamed"}</strong>
                         <span style={statusBadgeStyle(contact.status)}>
                           {contact.status || "Unknown"}
@@ -1048,7 +1145,7 @@ export default function App() {
                         {contact.phone || "No phone"} {contact.email ? `· ${contact.email}` : ""}
                       </div>
                       <div style={{ color: "#64748b", fontSize: 13, marginTop: 6 }}>
-                        {contact.address || "No address"}
+                        {contact.requirement || contact.address || "No requirement yet"}
                       </div>
                     </button>
                   ))
@@ -1056,12 +1153,12 @@ export default function App() {
               </div>
             </Section>
 
-            <Section title={selectedContact ? `Contact Details · ${selectedContact.name}` : "Contact Details"} description="Keep the selected record clean, current, and ready for booking.">
+            <Section title={selectedContact ? `Contact Details · ${selectedContact.name}` : "Contact Details"} description="Update details, track status, and manage bookings from one mobile-friendly card.">
               {!selectedContact ? (
                 <div className="empty-state">Please select a contact</div>
               ) : (
                 <div style={{ display: "grid", gap: 16 }}>
-                  <div className="field-grid-2">
+                  <div className="field-grid-2 mobile-single-grid">
                     <input
                       style={ui.input}
                       value={selectedContact.name || ""}
@@ -1113,18 +1210,18 @@ export default function App() {
                     placeholder="Notes (you can include booking preference here)"
                     rows={4}
                   />
-                  <div className="action-row">
+                  <div className="action-row mobile-action-stack">
                     <button style={ui.primaryBtn} onClick={handleSaveContactDetails}>
                       Save Contact
+                    </button>
+                    <button style={ui.secondaryBtn} onClick={() => openBookingForContact(selectedContact)}>
+                      Book Now
                     </button>
                     <button style={ui.secondaryBtn} onClick={() => handleMarkContact(selectedContact, "Contacted")}>
                       Mark Contacted
                     </button>
                     <button style={ui.secondaryBtn} onClick={() => handleMarkContact(selectedContact, "Quoted")}>
                       Mark Quoted
-                    </button>
-                    <button style={ui.secondaryBtn} onClick={() => openBookingForContact(selectedContact)}>
-                      Book Now
                     </button>
                   </div>
                   <div>
@@ -1134,42 +1231,21 @@ export default function App() {
                         <div className="empty-state">No bookings yet</div>
                       ) : (
                         contactBookings.map((booking) => (
-                          <div
-                            key={booking.id}
-                            style={{
-                              border: "1px solid #e5e7eb",
-                              borderRadius: 14,
-                              padding: 12,
-                              background: "#fcfdff",
-                            }}
-                          >
-                            <div
-                              style={{
-                                display: "flex",
-                                justifyContent: "space-between",
-                                gap: 12,
-                                alignItems: "center",
-                              }}
-                            >
+                          <div key={booking.id} className="contact-booking-card">
+                            <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
                               <strong>{booking.event_type}</strong>
                               <span style={{ color: "#64748b", fontSize: 13 }}>
                                 {booking.location_source || booking.location_type}
                               </span>
                             </div>
                             <div style={{ color: "#475569", fontSize: 14, marginTop: 8 }}>
-                              {new Date(booking.start_time).toLocaleString("en-NZ")} →{" "}
-                              {new Date(booking.end_time).toLocaleString("en-NZ")}
+                              {new Date(booking.start_time).toLocaleString("en-NZ")} → {new Date(booking.end_time).toLocaleString("en-NZ")}
                             </div>
-                            <div
-                              style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}
-                            >
+                            <div className="action-row mobile-action-stack" style={{ marginTop: 10 }}>
                               <button style={ui.secondaryBtn} onClick={() => startEditBooking(booking)}>
                                 Edit Booking
                               </button>
-                              <button
-                                style={ui.dangerBtn}
-                                onClick={() => handleDeleteBooking(booking.id)}
-                              >
+                              <button style={ui.dangerBtn} onClick={() => handleDeleteBooking(booking.id)}>
                                 Delete
                               </button>
                             </div>
@@ -1298,80 +1374,24 @@ export default function App() {
         )}
 
         {activeTab === "settings" && (
-          <div className="intake-grid">
-            <Section title="Event Types & Saved Locations" muted description="Keep booking defaults and reusable addresses tidy and easy to maintain.">
-              <div className="list-stack">
-                <div>
-                  <div style={{ fontSize: 13, color: "#64748b", marginBottom: 6 }}>
-                    Status options (one per line)
-                  </div>
-                  <textarea
-                    style={ui.textarea}
-                    rows={5}
-                    value={(settingsDraft.statusOptions || []).join("\n")}
-                    onChange={(e) => updateSettingsList("statusOptions", e.target.value)}
-                  />
-                </div>
-                <div>
-                  <div style={{ fontSize: 13, color: "#64748b", marginBottom: 6 }}>
-                    Tag options (one per line)
-                  </div>
-                  <textarea
-                    style={ui.textarea}
-                    rows={4}
-                    value={(settingsDraft.tagOptions || []).join("\n")}
-                    onChange={(e) => updateSettingsList("tagOptions", e.target.value)}
-                  />
-                </div>
-                <div>
-                  <div style={{ fontSize: 13, color: "#64748b", marginBottom: 6 }}>
-                    Event types (one per line: name|default minutes)
-                  </div>
-                  <textarea
-                    style={ui.textarea}
-                    rows={6}
-                    value={settingsDraft.eventTypesText || ""}
-                    onChange={(e) => updateSettingsList("eventTypesText", e.target.value)}
-                  />
-                </div>
-                <div>
-                  <div style={{ fontSize: 13, color: "#64748b", marginBottom: 6 }}>
-                    Saved locations (one per line: name|full address)
-                  </div>
-                  <textarea
-                    style={ui.textarea}
-                    rows={6}
-                    value={settingsDraft.savedLocationsText || ""}
-                    onChange={(e) => updateSettingsList("savedLocationsText", e.target.value)}
-                  />
-                </div>
-                <button style={ui.primaryBtn} onClick={handleSaveSettings}>
-                  Save Settings
-                </button>
-              </div>
-            </Section>
-            <Section title="Current System State" description="Quick debug snapshot of the current local settings and intake state.">
-              <pre
-                style={{
-                  margin: 0,
-                  whiteSpace: "pre-wrap",
-                  fontSize: 13,
-                  color: "#334155",
-                }}
-              >
-                {JSON.stringify(
-                  {
-                    settingsMode: settings?.mode || "fallback_local",
-                    eventTypes: settings?.eventTypes || [],
-                    savedLocations,
-                    intakeProfile,
-                  },
-                  null,
-                  2
-                )}
-              </pre>
-            </Section>
-          </div>
+          <SettingsPage
+            statusOptions={(settingsDraft.statusOptions || []).map((name, index) => ({ id: String(index), name }))}
+            tagOptions={(settingsDraft.tagOptions || []).map((name, index) => ({ id: String(index), name }))}
+            eventTypes={settingsDraft.eventTypes || []}
+            settingsMode={settings?.mode || "browser_local_storage"}
+            savedLocations={settingsDraft.savedLocations || []}
+            onAddStatus={addStatusOption}
+            onEditStatus={editStatusOption}
+            onAddTag={addTagOption}
+            onRemoveTag={removeTagOption}
+            onAddEventType={addEventType}
+            onEditEventType={editEventType}
+            onRemoveEventType={removeEventType}
+            onAddSavedLocation={addSavedLocation}
+            onRemoveSavedLocation={removeSavedLocation}
+            onSaveSettings={handleSaveSettings}
+            onResetDefaults={resetSettingsDefaults}
+          />
         )}
       </div>
 

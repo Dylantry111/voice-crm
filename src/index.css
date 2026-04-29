@@ -68,6 +68,50 @@ button:active { transform: translateY(0); }
 .action-row { display: flex; gap: 10px; flex-wrap: wrap; }
 .list-stack { display: grid; gap: 12px; }
 .card-stack-tight { display: grid; gap: 10px; }
+.mobile-flow-stack {
+  display: grid;
+  gap: 16px;
+}
+.mobile-single-grid {
+  grid-template-columns: 1fr 1fr;
+}
+.mobile-action-stack > * {
+  flex: 1 1 160px;
+}
+.mobile-header-actions {
+  width: 100%;
+}
+.mobile-header-actions input {
+  flex: 1 1 220px;
+}
+.contact-mobile-list {
+  display: grid;
+  gap: 12px;
+}
+.contact-mobile-card {
+  text-align: left;
+  border: 1px solid #e5e7eb;
+  border-radius: 18px;
+  padding: 14px;
+  background: #fff;
+}
+.contact-mobile-card.is-active {
+  border-color: #0f172a;
+  background: #f8fafc;
+  box-shadow: 0 0 0 3px rgba(15,23,42,0.05);
+}
+.contact-mobile-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+.contact-booking-card {
+  border: 1px solid #e5e7eb;
+  border-radius: 16px;
+  padding: 12px;
+  background: #fcfdff;
+}
 .booking-notes-mobile {
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 }
@@ -381,7 +425,8 @@ button:active { transform: translateY(0); }
     position: static;
   }
 
-  .field-grid-2 {
+  .field-grid-2,
+  .mobile-single-grid {
     grid-template-columns: 1fr;
   }
 }
@@ -390,16 +435,20 @@ button:active { transform: translateY(0); }
   .app-shell { padding: 16px; }
   .topbar { align-items: stretch; }
   .tabbar-wrap { width: 100%; justify-content: flex-start !important; }
-  .action-row { flex-direction: column; }
-  .action-row > * { width: 100%; }
+  .action-row,
+  .mobile-action-stack { flex-direction: column; }
+  .action-row > *,
+  .mobile-action-stack > * { width: 100%; }
   .metric-grid { grid-template-columns: 1fr 1fr; }
   .timeline-nav,
   .timeline-booking-actions {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
   }
-  .timeline-booking-row {
+  .timeline-booking-row,
+  .contact-mobile-row {
     flex-direction: column;
+    align-items: flex-start;
   }
   .timeline-slot-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -426,5 +475,9 @@ button:active { transform: translateY(0); }
   }
   .timeline-slot-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .mobile-header-actions {
+    display: grid !important;
+    grid-template-columns: 1fr;
   }
 }

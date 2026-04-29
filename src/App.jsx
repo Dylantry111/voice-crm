@@ -435,8 +435,9 @@ export default function App() {
 
   function openBookingForContact(contact) {
     const targetDate = calendarDate || formatDateInputValue(new Date());
+    const preferredSlot = normalizeSlotValue(selectedSlot || "09:00");
     setCalendarDate(targetDate);
-    resetBookingForm(contact, { date: targetDate, slot: "09:00" });
+    resetBookingForm(contact, { date: targetDate, slot: preferredSlot });
     setBookingModalMode("customer-create");
     setBookingModalOpen(true);
   }
@@ -760,7 +761,7 @@ export default function App() {
     setCalendarDate(formatDateInputValue(current));
   }
 
-  const intakeUrl = intakeProfile
+  const intakeUrl = intakeProfile && typeof window !== "undefined"
     ? `${window.location.origin}/intake/${intakeProfile.intake_token}`
     : "";
 

@@ -44,7 +44,7 @@ export async function updateMyIntakeProfile(patch) {
   const { data: authData, error: authError } = await supabase.auth.getUser();
   if (authError) throw authError;
   const user = authData?.user;
-  if (!user) throw new Error("请先登录");
+  if (!user) throw new Error("Please sign in first");
 
   const { data, error } = await supabase
     .from("public_intake_profiles")
@@ -72,7 +72,7 @@ export async function fetchPublicIntakeProfileByToken(token) {
 
 export async function submitPublicIntake({ token, form }) {
   const profile = await fetchPublicIntakeProfileByToken(token);
-  if (!profile) throw new Error("Intake 链接无效或已停用");
+  if (!profile) throw new Error("Intake link is invalid or disabled");
 
   const preferredBookingNotes = form.preferred_booking_notes || "";
   const mergedNotes = [form.notes, preferredBookingNotes ? `Booking preference: ${preferredBookingNotes}` : ""]

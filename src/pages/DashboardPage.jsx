@@ -13,11 +13,17 @@ function SmallStat({ label, value, hint, action }) {
 }
 
 function withinNext7Days(dateValue) {
-  const now = new Date();
-  const future = new Date();
-  future.setDate(future.getDate() + 7);
   const d = new Date(dateValue);
-  return d >= now && d <= future;
+  if (Number.isNaN(d.getTime())) return false;
+
+  const start = new Date();
+  start.setHours(0, 0, 0, 0);
+
+  const end = new Date(start);
+  end.setDate(end.getDate() + 7);
+  end.setHours(23, 59, 59, 999);
+
+  return d >= start && d <= end;
 }
 
 function weekdayLabel(dateValue) {

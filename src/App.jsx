@@ -24,6 +24,7 @@ import { formatDateInputValue } from "./lib/dateUtils";
 import BookingEditor from "./components/bookings/BookingEditor";
 import DayTimeline from "./components/bookings/DayTimeline";
 import SettingsPage from "./pages/SettingsPage.jsx";
+import DashboardPage from "./pages/DashboardPage.jsx";
 
 const PublicIntakeScreen = lazy(() => import("./pages/PublicIntakeScreen.jsx"));
 
@@ -956,50 +957,23 @@ export default function App() {
         )}
 
         {activeTab === "dashboard" && (
-          <div className="dashboard-grid">
-            <Section title="Quick Actions" muted description="Jump into the next step without hunting through the workspace.">
-              <div className="action-row">
-                <button style={ui.primaryBtn} onClick={() => setActiveTab("capture")}>
-                  Add New Contact
-                </button>
-                <button style={ui.secondaryBtn} onClick={() => setActiveTab("calendar")}>
-                  Open Calendar
-                </button>
-                <button style={ui.secondaryBtn} onClick={handleExportContacts}>
-                  Export Contacts
-                </button>
-                <button style={ui.secondaryBtn} onClick={handleExportBookings}>
-                  Export Bookings
-                </button>
-              </div>
-            </Section>
-            <Section title="Recent Contacts" description="A lightweight view of your latest inbound or newly created leads.">
-              <div className="card-stack-tight">
-                {contacts.slice(0, 5).map((contact) => (
-                  <div
-                    key={contact.id}
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      gap: 12,
-                      alignItems: "center",
-                      border: "1px solid #eef2f7",
-                      borderRadius: 12,
-                      padding: 12,
-                    }}
-                  >
-                    <div>
-                      <div style={{ fontWeight: 700 }}>{contact.name}</div>
-                      <div style={{ color: "#64748b", fontSize: 13 }}>
-                        {contact.requirement || "No requirement"}
-                      </div>
-                    </div>
-                    <span style={statusBadgeStyle(contact.status)}>{contact.status}</span>
-                  </div>
-                ))}
-              </div>
-            </Section>
-          </div>
+          <DashboardPage
+            contacts={contacts}
+            bookings={bookings}
+            intakeShare={{
+              isOpen: intakeSheetOpen,
+              link: intakeDraft.public_url,
+              qrImageUrl: intakeDraft.qr_code_url,
+              onOpen: () => setIntakeSheetOpen(true),
+              onClose: () => setIntakeSheetOpen(false),
+            }}
+            onOpenContact={(contact) => {
+              setSelectedContactId(contact.id);
+              setActiveTab("contacts");
+            }}
+            onEditBooking={startEditBooking}
+            onDeleteBooking={handleDeleteBooking}
+          />
         )}
 
         {activeTab === "capture" && (

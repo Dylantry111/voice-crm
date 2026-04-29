@@ -46,3 +46,21 @@ export async function updateContact(id, patch) {
   if (error) throw error;
   return data;
 }
+
+export async function deleteContactCascade(contactId) {
+  const user = await requireUser();
+
+  const { error: bookingError } = await supabase
+    .from("bookings")
+    .delete()
+    .eq("contact_id", contactId)
+    .eq("user_id", user.id);
+  if (bookingError) throw bookingError;
+
+  const { error } = await supabase
+    .from("contacts")
+    .delete()
+    .eq("id", contactId)
+    .eq("user_id", user.id);
+  if (error) throw error;
+}

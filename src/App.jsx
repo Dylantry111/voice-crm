@@ -1,5 +1,5 @@
 import React, { Suspense, lazy, useEffect, useMemo, useState } from "react";
-import { createContact, fetchContacts, updateContact } from "./services/contactsService";
+import { createContact, deleteContactCascade, fetchContacts, updateContact } from "./services/contactsService";
 import {
   checkBookingConflict,
   createBooking,
@@ -700,6 +700,22 @@ export default function App() {
     }
   }
 
+  async function handleDeleteContact(contact) {
+    if (!contact?.id) return;
+    if (!window.confirm(`Delete ${contact.name || "this contact"} and related bookings?`)) return;
+    setMessage("");
+    try {
+      await deleteContactCascade(contact.id);
+      setContacts((prev) => prev.filter((item) => item.id !== contact.id));
+      setBookings((prev) => prev.filter((item) => item.contact_id !== contact.id));
+      setSelectedContactId((prev) => (prev === contact.id ? "" : prev));
+      setMessage("Contact deleted");
+    } catch (error) {
+      console.error(error);
+      setMessage(`Delete contact failed: ${error.message}`);
+    }
+  }
+
   function handleBookingFormChange(field, value) {
     setBookingForm((prev) => {
       const next = { ...prev, [field]: value };
@@ -906,14 +922,25 @@ export default function App() {
   }
 
   function shiftCalendarDate(days) {
-    const current = new Date(calendarDate);
+    const current = new Date(bookingModalOpen ? (bookingForm.date || calendarDate) : calendarDate);
     current.setDate(current.getDate() + days);
-    setCalendarDate(formatDateInputValue(current));
+    const nextDate = formatDateInputValue(current);
+    setCalendarDate(nextDate);
+    if (bookingModalOpen) {
+      setBookingForm((prev) => ({ ...prev, date: nextDate }));
+    }
   }
 
-  const intakeUrl = intakeProfile && typeof window !== "undefined"
+  function setBookingDate(value) {
+    setCalendarDate(value);
+    if (bookingModalOpen) {
+      setBookingForm((prev) => ({ ...prev, date: value }));
+    }
+  }
+
+  const intakeUrl = intakeDraft.public_url || (intakeProfile && typeof window !== "undefined"
     ? `${window.location.origin}/intake/${intakeProfile.intake_token}`
-    : "";
+    : "");
 
   const tabButtons = [
     ["dashboard", "Overview"],
@@ -1222,6 +1249,9 @@ export default function App() {
                     <button style={ui.secondaryBtn} onClick={() => handleMarkContact(selectedContact, "Quoted")}>
                       Mark Quoted
                     </button>
+                    <button style={ui.dangerBtn} onClick={() => handleDeleteContact(selectedContact)}>
+                      Delete Contact
+                    </button>
                   </div>
                   <div>
                     <strong style={{ display: "block", marginBottom: 10 }}>Bookings for This Contact</strong>
@@ -1282,9 +1312,9 @@ export default function App() {
                 bookings={bookings}
                 contacts={contacts}
                 onPrevDay={() => shiftCalendarDate(-1)}
-                onToday={() => setCalendarDate(formatDateInputValue(new Date()))}
+                onToday={() => setBookingDate(formatDateInputValue(new Date()))}
                 onNextDay={() => shiftCalendarDate(1)}
-                onDateChange={setCalendarDate}
+                onDateChange={setBookingDate}
                 onPickSlot={(slot) => setSelectedSlot(normalizeSlotValue(slot))}
                 onPickBooking={(id) => setSelectedBookingId(id)}
                 onCreateBooking={openBookingFromSlot}
@@ -1343,6 +1373,12 @@ export default function App() {
                   <button style={ui.primaryBtn} onClick={handleSaveIntakeProfile}>
                     Save Intake Settings
                   </button>
+                  <button
+                    style={ui.secondaryBtn}
+                    onClick={() => setIntakeSheetOpen((prev) => !prev)}
+                  >
+                    {intakeSheetOpen ? "Hide QR Code" : "Show QR Code"}
+                  </button>
                 </div>
               </div>
             </Section>
@@ -1365,6 +1401,16 @@ export default function App() {
                     Copy Link
                   </button>
                 </div>
+                {intakeDraft.qr_code_url ? (
+                  <div style={{ marginTop: 16, display: "grid", gap: 10, justifyItems: "start" }}>
+                    <div className="intake-link-label">QR Code</div>
+                    <img
+                      src={intakeDraft.qr_code_url}
+                      alt="Public intake QR code"
+                      style={{ width: 220, maxWidth: "100%", borderRadius: 20, border: "1px solid #e2e8f0", background: "#fff", padding: 10 }}
+                    />
+                  </div>
+                ) : null}
                 <div className="intake-link-hint">
                   Customers can open this link anonymously and submit their details, including booking time preferences.
                 </div>
@@ -1409,9 +1455,9 @@ export default function App() {
         selectedSlot={selectedSlot}
         selectedBookingId={selectedBookingId}
         onPrevDay={() => shiftCalendarDate(-1)}
-        onToday={() => setCalendarDate(formatDateInputValue(new Date()))}
+        onToday={() => setBookingDate(formatDateInputValue(new Date()))}
         onNextDay={() => shiftCalendarDate(1)}
-        onDateChange={setCalendarDate}
+        onDateChange={setBookingDate}
         onPickSlot={(slot) => {
           const normalized = normalizeSlotValue(slot);
           setSelectedSlot(normalized);

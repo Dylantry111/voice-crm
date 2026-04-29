@@ -27,45 +27,51 @@ import DayTimeline from "./components/bookings/DayTimeline";
 const PublicIntakeScreen = lazy(() => import("./pages/PublicIntakeScreen.jsx"));
 
 const ui = {
-  page: { minHeight: "100vh", background: "#f8fafc", color: "#0f172a" },
+  page: {
+    minHeight: "100vh",
+    background: "linear-gradient(180deg, #f8fafc 0%, #eef4ff 100%)",
+    color: "#0f172a",
+  },
   section: {
-    background: "#fff",
+    background: "rgba(255,255,255,0.94)",
     border: "1px solid #e2e8f0",
-    borderRadius: 18,
-    padding: 18,
-    boxShadow: "0 8px 24px rgba(15,23,42,0.06)",
+    borderRadius: 22,
+    padding: 20,
+    boxShadow: "0 10px 28px rgba(15,23,42,0.06)",
+    backdropFilter: "blur(8px)",
   },
   sectionMuted: {
-    background: "linear-gradient(180deg, #ffffff 0%, #f8fafc 100%)",
+    background: "linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(248,250,252,0.92) 100%)",
     border: "1px solid #e2e8f0",
-    borderRadius: 18,
-    padding: 18,
-    boxShadow: "0 8px 24px rgba(15,23,42,0.05)",
+    borderRadius: 22,
+    padding: 20,
+    boxShadow: "0 10px 24px rgba(15,23,42,0.05)",
+    backdropFilter: "blur(8px)",
   },
   input: {
     width: "100%",
-    height: 42,
-    borderRadius: 12,
+    height: 44,
+    borderRadius: 14,
     border: "1px solid #cbd5e1",
-    padding: "0 12px",
+    padding: "0 14px",
     background: "#fff",
     color: "#0f172a",
   },
   textarea: {
     width: "100%",
-    borderRadius: 12,
+    borderRadius: 14,
     border: "1px solid #cbd5e1",
-    padding: 12,
+    padding: 14,
     background: "#fff",
     color: "#0f172a",
     resize: "vertical",
   },
   select: {
     width: "100%",
-    height: 42,
-    borderRadius: 12,
+    height: 44,
+    borderRadius: 14,
     border: "1px solid #cbd5e1",
-    padding: "0 12px",
+    padding: "0 14px",
     background: "#fff",
     color: "#0f172a",
   },
@@ -73,30 +79,30 @@ const ui = {
     background: "#0f172a",
     color: "#fff",
     border: "1px solid #0f172a",
-    borderRadius: 12,
-    padding: "10px 14px",
-    fontWeight: 600,
+    borderRadius: 14,
+    padding: "11px 15px",
+    fontWeight: 700,
   },
   secondaryBtn: {
-    background: "#fff",
+    background: "rgba(255,255,255,0.9)",
     color: "#0f172a",
     border: "1px solid #cbd5e1",
-    borderRadius: 12,
-    padding: "10px 14px",
-    fontWeight: 600,
+    borderRadius: 14,
+    padding: "11px 15px",
+    fontWeight: 700,
   },
   dangerBtn: {
     background: "#fff",
     color: "#b91c1c",
     border: "1px solid #fecaca",
-    borderRadius: 12,
-    padding: "10px 14px",
-    fontWeight: 600,
+    borderRadius: 14,
+    padding: "11px 15px",
+    fontWeight: 700,
   },
   badge: {
     display: "inline-flex",
     alignItems: "center",
-    padding: "4px 10px",
+    padding: "5px 10px",
     borderRadius: 999,
     fontSize: 12,
     fontWeight: 700,
@@ -119,20 +125,25 @@ function statusBadgeStyle(status) {
   };
 }
 
-function Section({ title, children, right, muted = false }) {
+function Section({ title, children, right, muted = false, description = "" }) {
   return (
     <section style={muted ? ui.sectionMuted : ui.section}>
       <div
         style={{
           display: "flex",
           justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 14,
+          alignItems: "flex-start",
+          marginBottom: 16,
           gap: 12,
           flexWrap: "wrap",
         }}
       >
-        <h2 style={{ margin: 0, fontSize: 18, letterSpacing: "-0.01em" }}>{title}</h2>
+        <div>
+          <h2 style={{ margin: 0, fontSize: 18, letterSpacing: "-0.01em" }}>{title}</h2>
+          {description ? (
+            <div style={{ marginTop: 6, fontSize: 13, color: "#64748b" }}>{description}</div>
+          ) : null}
+        </div>
         {right}
       </div>
       {children}
@@ -142,10 +153,10 @@ function Section({ title, children, right, muted = false }) {
 
 function MetricCard({ title, value, hint }) {
   return (
-    <div style={{ ...ui.sectionMuted, padding: 16 }}>
-      <div style={{ fontSize: 13, color: "#64748b", marginBottom: 8 }}>{title}</div>
-      <div style={{ fontSize: 30, fontWeight: 800, letterSpacing: "-0.03em" }}>{value}</div>
-      {hint ? <div style={{ marginTop: 8, fontSize: 13, color: "#64748b" }}>{hint}</div> : null}
+    <div style={{ ...ui.sectionMuted, padding: 14, boxShadow: "none" }}>
+      <div style={{ fontSize: 12, color: "#64748b", marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.04em" }}>{title}</div>
+      <div style={{ fontSize: 26, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1.1 }}>{value}</div>
+      {hint ? <div style={{ marginTop: 6, fontSize: 12, color: "#64748b" }}>{hint}</div> : null}
     </div>
   );
 }
@@ -799,21 +810,28 @@ export default function App() {
   return (
     <div style={ui.page}>
       <div className="app-shell">
-        <div className="topbar" style={{ ...ui.sectionMuted, padding: 20 }}>
+        <div className="topbar workspace-hero" style={{ ...ui.sectionMuted, padding: 22 }}>
           <div>
-            <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: "-0.04em" }}>
-              Voice CRM
+            <div style={{ fontSize: 12, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: "#2563eb" }}>
+              Voice CRM Workspace
             </div>
-            <div style={{ marginTop: 6, color: "#64748b", fontSize: 14 }}>
-              Fast capture · calendar booking · public intake
+            <div style={{ fontSize: 30, fontWeight: 900, letterSpacing: "-0.04em", marginTop: 6 }}>
+              Fast capture, booking, and intake in one place
+            </div>
+            <div style={{ marginTop: 8, color: "#64748b", fontSize: 14, maxWidth: 720 }}>
+              Keep contact capture simple, move straight into scheduling, and give customers a clean intake link.
             </div>
           </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <div className="tabbar-wrap" style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", justifyContent: "flex-end" }}>
             {tabButtons.map(([key, label]) => (
               <button
                 key={key}
                 onClick={() => setActiveTab(key)}
-                style={activeTab === key ? ui.primaryBtn : ui.secondaryBtn}
+                style={
+                  activeTab === key
+                    ? { ...ui.primaryBtn, boxShadow: "0 10px 20px rgba(15,23,42,0.12)" }
+                    : ui.secondaryBtn
+                }
               >
                 {label}
               </button>
@@ -836,7 +854,7 @@ export default function App() {
         ) : null}
 
         {(activeTab === "dashboard" || activeTab === "contacts" || activeTab === "calendar") && (
-          <div className="metric-grid">
+          <div className="metric-grid metric-grid-compact">
             <MetricCard title="Contacts" value={contacts.length} hint="Fast capture, editing, and export" />
             <MetricCard title="Bookings" value={bookings.length} hint="Create directly from available calendar slots" />
             <MetricCard title="Saved Locations" value={savedLocations.length} hint="Customizable in Settings" />
@@ -850,7 +868,7 @@ export default function App() {
 
         {activeTab === "dashboard" && (
           <div className="dashboard-grid">
-            <Section title="Quick Actions" muted>
+            <Section title="Quick Actions" muted description="Jump into the next step without hunting through the workspace.">
               <div className="action-row">
                 <button style={ui.primaryBtn} onClick={() => setActiveTab("capture")}>
                   Add New Contact
@@ -866,7 +884,7 @@ export default function App() {
                 </button>
               </div>
             </Section>
-            <Section title="Recent Contacts">
+            <Section title="Recent Contacts" description="A lightweight view of your latest inbound or newly created leads.">
               <div className="card-stack-tight">
                 {contacts.slice(0, 5).map((contact) => (
                   <div
@@ -898,6 +916,7 @@ export default function App() {
         {activeTab === "capture" && (
           <Section
             title="Natural Language Quick Capture"
+            description="Paste or dictate a rough note, then auto-fill the contact form before saving."
             right={<button style={ui.secondaryBtn} onClick={fillFromVoice}>Auto Fill</button>}
           >
             <div className="list-stack">
@@ -977,6 +996,7 @@ export default function App() {
           <div className="contacts-grid">
             <Section
               title="Contacts"
+              description="Search, review, and update contact details from one panel."
               right={
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   <input
@@ -1036,7 +1056,7 @@ export default function App() {
               </div>
             </Section>
 
-            <Section title={selectedContact ? `Contact Details · ${selectedContact.name}` : "Contact Details"}>
+            <Section title={selectedContact ? `Contact Details · ${selectedContact.name}` : "Contact Details"} description="Keep the selected record clean, current, and ready for booking.">
               {!selectedContact ? (
                 <div className="empty-state">Please select a contact</div>
               ) : (
@@ -1168,6 +1188,7 @@ export default function App() {
           <div className="calendar-grid">
             <Section
               title="Calendar Scheduler"
+              description="See open time clearly, create bookings from empty slots, and edit conflicts fast."
               right={
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   <button style={ui.secondaryBtn} onClick={() => setCalendarDate(formatDateInputValue(new Date()))}>
@@ -1199,7 +1220,7 @@ export default function App() {
               />
             </Section>
 
-            <Section title="Booking Notes" muted>
+            <Section title="Booking Notes" muted description="Booking rules and context for the current scheduling flow.">
               <div className="card-stack-tight">
                 <div>1. Click an open slot to create a booking immediately.</div>
                 <div>2. Event type default duration comes from Settings.</div>
@@ -1212,7 +1233,7 @@ export default function App() {
 
         {activeTab === "intake" && (
           <div className="intake-grid">
-            <Section title="Public Intake Settings" muted>
+            <Section title="Public Intake Settings" muted description="Control what your customer-facing intake form looks like.">
               <div className="list-stack">
                 <label
                   style={{ display: "flex", gap: 8, alignItems: "center", color: "#334155", fontWeight: 600 }}
@@ -1248,7 +1269,7 @@ export default function App() {
                 </button>
               </div>
             </Section>
-            <Section title="Intake Link">
+            <Section title="Intake Link" description="Share this link with customers so they can submit details directly into CRM.">
               <div className="card-stack-tight">
                 <div>
                   <strong>Public URL</strong>
@@ -1278,7 +1299,7 @@ export default function App() {
 
         {activeTab === "settings" && (
           <div className="intake-grid">
-            <Section title="Event Types & Saved Locations" muted>
+            <Section title="Event Types & Saved Locations" muted description="Keep booking defaults and reusable addresses tidy and easy to maintain.">
               <div className="list-stack">
                 <div>
                   <div style={{ fontSize: 13, color: "#64748b", marginBottom: 6 }}>
@@ -1329,7 +1350,7 @@ export default function App() {
                 </button>
               </div>
             </Section>
-            <Section title="Current System State">
+            <Section title="Current System State" description="Quick debug snapshot of the current local settings and intake state.">
               <pre
                 style={{
                   margin: 0,

@@ -38,6 +38,29 @@ function buildClusters(bookings) {
   return clusters;
 }
 
+function clusterMeta(cluster, index) {
+  const pseudoStart = {
+    start_time: cluster.start.toISOString(),
+    end_time: new Date(cluster.start.getTime() + 30 * 60000).toISOString(),
+  };
+  const startLabel = bookingStartSlot(pseudoStart);
+  const startIndex = ALL_TIME_SLOTS.indexOf(startLabel);
+  if (startIndex < 0) {
+    return {
+      cluster,
+      clusterKey: `${cluster.start.toISOString()}-${index}`,
+      startIndex: -1,
+      startSlot: null,
+    };
+  }
+  return {
+    cluster,
+    clusterKey: `${cluster.start.toISOString()}-${index}`,
+    startIndex,
+    startSlot: ALL_TIME_SLOTS[startIndex],
+  };
+}
+
 export default function DayTimeline({
   selectedDate,
   selectedSlot,
@@ -63,35 +86,31 @@ export default function DayTimeline({
     .sort((a, b) => new Date(a.start_time) - new Date(b.start_time))
     .map((b) => buildBookingMeta(b, contacts));
 
-  const clusters = buildClusters(bookingsForDay);
+  const clusters = buildClusters(bookingsForDay).map(clusterMeta);
   const coveredSlots = new Set();
-  const clusterStartsBySlot = new Map();
 
-  clusters.forEach((cluster, index) => {
-    const pseudoStart = {
-      start_time: cluster.start.toISOString(),
-      end_time: new Date(cluster.start.getTime() + 30 * 60000).toISOString(),
-    };
-    const startLabel = bookingStartSlot(pseudoStart);
-    const startIndex = ALL_TIME_SLOTS.indexOf(startLabel);
+  clusters.forEach(({ cluster, startIndex }) => {
     if (startIndex < 0) return;
-
     const durationMinutes = Math.max(30, Math.round((cluster.end - cluster.start) / 60000));
     const steps = Math.max(1, Math.ceil(durationMinutes / 30));
-
-    clusterStartsBySlot.set(ALL_TIME_SLOTS[startIndex], { cluster, clusterKey: `${cluster.start.toISOString()}-${index}` });
-    for (let i = 1; i < steps; i += 1) {
+    for (let i = 0; i < steps; i += 1) {
       if (ALL_TIME_SLOTS[startIndex + i]) coveredSlots.add(ALL_TIME_SLOTS[startIndex + i]);
     }
   });
 
+  const availableSlots = showAvailability
+    ? ALL_TIME_SLOTS.filter((slot) => !coveredSlots.has(slot))
+    : [];
+
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="timeline-shell">
+      <div className="timeline-topbar">
         <div>
-          <div className="text-sm font-semibold">{formatHeaderDate(selectedDate)}</div>
-          <div className="text-xs text-slate-500">
-            {showAvailability ? "Browse bookings and available start times." : "View booked time blocks for this day."}
+          <div className="timeline-title">{formatHeaderDate(selectedDate)}</div>
+          <div className="timeline-subtitle">
+            {showAvailability
+              ? "Booked items first, then quick-pick open times below."
+              : "Bookings scheduled for this day."}
           </div>
         </div>
         {onDateChange ? (
@@ -99,98 +118,132 @@ export default function DayTimeline({
             type="date"
             value={formatDateKey(selectedDate)}
             onChange={(e) => onDateChange(e.target.value)}
-            className="h-10 rounded-2xl border border-slate-200 px-3 text-sm outline-none"
+            className="timeline-date-input"
           />
         ) : null}
       </div>
 
-      <div className="mt-4 flex flex-wrap gap-2">
-        <button onClick={onPrevDay} className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Prev Day</button>
-        <button onClick={onToday} className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Today</button>
-        <button onClick={onNextDay} className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50">Next Day</button>
+      <div className="timeline-nav">
+        <button onClick={onPrevDay} className="timeline-nav-btn">Prev</button>
+        <button onClick={onToday} className="timeline-nav-btn timeline-nav-btn-primary">Today</button>
+        <button onClick={onNextDay} className="timeline-nav-btn">Next</button>
       </div>
 
-      <div className="mt-4 space-y-2">
-        {ALL_TIME_SLOTS.map((slot) => {
-          if (coveredSlots.has(slot)) return null;
+      <div className="timeline-stack">
+        <div className="timeline-panel">
+          <div className="timeline-panel-header">
+            <div className="timeline-panel-title">Scheduled</div>
+            <div className="timeline-panel-hint">
+              {bookingsForDay.length ? `${bookingsForDay.length} booking${bookingsForDay.length > 1 ? "s" : ""}` : "No bookings yet"}
+            </div>
+          </div>
 
-          const clusterStart = clusterStartsBySlot.get(slot);
-          if (clusterStart) {
-            const overlap = clusterStart.cluster.items.length > 1;
-            const selectedInCluster = clusterStart.cluster.items.some((item) => item.id === selectedBookingId);
+          <div className="timeline-booking-list">
+            {clusters.length ? (
+              clusters.map(({ cluster, clusterKey }) => {
+                const overlap = cluster.items.length > 1;
+                const selectedInCluster = cluster.items.some((item) => item.id === selectedBookingId);
 
-            return (
-              <div
-                key={clusterStart.clusterKey}
-                className={`grid grid-cols-[110px_1fr] gap-3 rounded-2xl p-3 ${
-                  selectedInCluster ? "border-2 border-slate-900 bg-slate-100" : overlap ? "border border-rose-200 bg-rose-50" : "border border-amber-200 bg-amber-50"
-                }`}
-              >
-                <div className="text-sm font-medium text-slate-700">
-                  {formatSlotTimeRange(clusterStart.cluster.start, clusterStart.cluster.end)}
-                </div>
-                <div className="space-y-3">
-                  {overlap ? (
-                    <div className="text-xs font-semibold uppercase tracking-wide text-rose-700">
-                      Overlap warning · {clusterStart.cluster.items.length} bookings
+                return (
+                  <div
+                    key={clusterKey}
+                    className={`timeline-booking-group ${selectedInCluster ? "is-selected" : ""} ${overlap ? "is-overlap" : ""}`}
+                  >
+                    <div className="timeline-booking-range">
+                      {formatSlotTimeRange(cluster.start, cluster.end)}
                     </div>
-                  ) : null}
 
-                  {clusterStart.cluster.items.map((item) => {
-                    const isSelected = selectedBookingId === item.id;
-                    return (
-                      <div key={item.id} className={`rounded-2xl p-3 ${isSelected ? "bg-white ring-1 ring-slate-300" : "bg-white/70"}`}>
-                        <button onClick={() => onPickBooking?.(item.id)} className="w-full text-left">
-                          <div className="text-sm font-semibold text-slate-900">{item.who}</div>
-                          <div className="text-xs text-slate-600">{item.timeLabel} · {item.event_type}</div>
-                          <div className="text-xs text-slate-500">{item.where}</div>
-                        </button>
-                        {isSelected && (onEditBooking || onDeleteBooking) ? (
-                          <div className="mt-3 flex gap-2">
-                            {onEditBooking ? (
-                              <button onClick={() => onEditBooking(item)} className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-800">Edit</button>
-                            ) : null}
-                            {onDeleteBooking ? (
-                              <button onClick={() => onDeleteBooking(item.id)} className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-700">Delete</button>
+                    <div className="timeline-booking-cards">
+                      {overlap ? (
+                        <div className="timeline-overlap-badge">
+                          Overlap warning · {cluster.items.length} bookings
+                        </div>
+                      ) : null}
+
+                      {cluster.items.map((item) => {
+                        const isSelected = selectedBookingId === item.id;
+                        return (
+                          <div
+                            key={item.id}
+                            className={`timeline-booking-card ${isSelected ? "is-active" : ""}`}
+                          >
+                            <button onClick={() => onPickBooking?.(item.id)} className="timeline-booking-main">
+                              <div className="timeline-booking-row">
+                                <div className="timeline-booking-name">{item.who}</div>
+                                <div className="timeline-booking-time">{item.timeLabel}</div>
+                              </div>
+                              <div className="timeline-booking-meta">{item.event_type}</div>
+                              <div className="timeline-booking-address">{item.where}</div>
+                            </button>
+
+                            {isSelected && (onEditBooking || onDeleteBooking) ? (
+                              <div className="timeline-booking-actions">
+                                {onEditBooking ? (
+                                  <button onClick={() => onEditBooking(item)} className="timeline-inline-btn">Edit</button>
+                                ) : null}
+                                {onDeleteBooking ? (
+                                  <button onClick={() => onDeleteBooking(item.id)} className="timeline-inline-btn danger">Delete</button>
+                                ) : null}
+                              </div>
                             ) : null}
                           </div>
-                        ) : null}
-                      </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="timeline-empty">No bookings scheduled for this day.</div>
+            )}
+          </div>
+        </div>
+
+        {showAvailability ? (
+          <div className="timeline-panel">
+            <div className="timeline-panel-header">
+              <div className="timeline-panel-title">Available Start Times</div>
+              <div className="timeline-panel-hint">
+                {availableSlots.length ? "Tap a time to prepare a booking." : "No open slot left today"}
+              </div>
+            </div>
+
+            {availableSlots.length ? (
+              <>
+                <div className="timeline-slot-grid">
+                  {availableSlots.map((slot) => {
+                    const isSelected = selectedSlot === slot;
+                    return (
+                      <button
+                        key={slot}
+                        onClick={() => onPickSlot?.(slot)}
+                        className={`timeline-slot-chip ${isSelected ? "is-selected" : ""}`}
+                      >
+                        {slot}
+                      </button>
                     );
                   })}
                 </div>
-              </div>
-            );
-          }
 
-          if (!showAvailability) return null;
-
-          const isSelected = selectedSlot === slot;
-          return (
-            <div
-              key={slot}
-              className={`grid grid-cols-[110px_1fr] gap-3 rounded-2xl p-3 ${isSelected ? "border-2 border-slate-900 bg-slate-100" : "border border-slate-200 bg-white"}`}
-            >
-              <button onClick={() => onPickSlot?.(slot)} className="contents">
-                <div className="text-sm font-medium text-slate-700">{slot}</div>
-                <div className="text-left">
-                  <div className="text-sm font-semibold text-slate-900">{isSelected ? "Selected" : "Available"}</div>
-                  <div className="text-xs text-slate-500">{isSelected ? "Selected start time" : "Click to select this start time"}</div>
-                </div>
-              </button>
-              {isSelected && onCreateBooking ? (
-                <>
-                  <div />
-                  <div className="mt-1">
-                    <button onClick={() => onCreateBooking(slot)} className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-800">
-                      {createLabel}
-                    </button>
+                {selectedSlot ? (
+                  <div className="timeline-selected-bar">
+                    <div>
+                      <div className="timeline-selected-label">Selected time</div>
+                      <div className="timeline-selected-value">{selectedSlot}</div>
+                    </div>
+                    {onCreateBooking ? (
+                      <button onClick={() => onCreateBooking(selectedSlot)} className="timeline-create-btn">
+                        {createLabel}
+                      </button>
+                    ) : null}
                   </div>
-                </>
-              ) : null}
-            </div>
-          );
-        })}
+                ) : null}
+              </>
+            ) : (
+              <div className="timeline-empty">No available start times for this day.</div>
+            )}
+          </div>
+        ) : null}
       </div>
     </div>
   );

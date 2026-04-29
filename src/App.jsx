@@ -1221,11 +1221,11 @@ export default function App() {
             </Section>
 
             <Section title="Booking Notes" muted description="Booking rules and context for the current scheduling flow.">
-              <div className="card-stack-tight">
-                <div>1. Click an open slot to create a booking immediately.</div>
-                <div>2. Event type default duration comes from Settings.</div>
-                <div>3. Address can come from customer address, saved locations, or manual entry.</div>
-                <div>4. A conflict check runs before saving to avoid overlapping bookings.</div>
+              <div className="card-stack-tight booking-notes-mobile">
+                <div>Tap an open time to start a booking immediately.</div>
+                <div>Event types use default durations from Settings.</div>
+                <div>Location can come from customer address, saved locations, or manual entry.</div>
+                <div>Conflicts are checked before saving.</div>
               </div>
             </Section>
           </div>

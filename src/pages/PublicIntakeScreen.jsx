@@ -29,7 +29,7 @@ export default function PublicIntakeScreen({ token }) {
         setProfile(data);
       } catch (error) {
         if (!active) return;
-        setMessage(`加载失败：${error.message}`);
+        setMessage(`Load failed: ${error.message}`);
       } finally {
         if (active) setLoading(false);
       }
@@ -43,11 +43,11 @@ export default function PublicIntakeScreen({ token }) {
     try {
       await submitPublicIntake({ token, form });
       setSubmitted(true);
-      setMessage("提交成功，我们会尽快联系你并安排后续预约。");
+      setMessage("Submitted successfully. We’ll contact you soon and arrange the next booking step.");
       setForm({ name: "", phone: "", email: "", address: "", requirement: "", preferred_booking_notes: "", notes: "" });
     } catch (error) {
       console.error(error);
-      setMessage(`提交失败：${error.message}`);
+      setMessage(`Submission failed: ${error.message}`);
     }
   }
 
@@ -66,8 +66,8 @@ export default function PublicIntakeScreen({ token }) {
     return (
       <div style={{ minHeight: "100vh", background: "#f8fafc", display: "grid", placeItems: "center", padding: 24 }}>
         <div style={{ maxWidth: 560, background: "#fff", border: "1px solid #e5e7eb", borderRadius: 16, padding: 24 }}>
-          <h1 style={{ marginTop: 0 }}>链接不可用</h1>
-          <p style={styles.muted}>这个 intake 页面不存在，或者已经被停用。</p>
+          <h1 style={{ marginTop: 0 }}>Link unavailable</h1>
+          <p style={styles.muted}>This intake page does not exist or has been disabled.</p>
         </div>
       </div>
     );

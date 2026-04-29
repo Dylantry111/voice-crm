@@ -41,7 +41,7 @@ export default function AuthGate({ children }) {
         return;
       }
 
-      setMessage("注册成功。请检查邮箱验证链接，或直接尝试登录。");
+      setMessage("Sign-up successful. Please check your email for the verification link, or try logging in directly.");
       return;
     }
 
@@ -55,7 +55,7 @@ export default function AuthGate({ children }) {
       return;
     }
 
-    setMessage("登录成功");
+    setMessage("Signed in successfully");
   }
 
   async function handleLogout() {
@@ -92,13 +92,13 @@ export default function AuthGate({ children }) {
             Voice CRM
           </h1>
           <p style={{ color: "#475569", marginBottom: 20 }}>
-            {mode === "login" ? "登录你的账号" : "创建一个新账号"}
+            {mode === "login" ? "Sign in to your account" : "Create a new account"}
           </p>
 
           <form onSubmit={handleSubmit} style={{ display: "grid", gap: 12 }}>
             <input
               type="email"
-              placeholder="邮箱"
+              placeholder="Email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -112,7 +112,7 @@ export default function AuthGate({ children }) {
 
             <input
               type="password"
-              placeholder="密码"
+              placeholder="Password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -136,7 +136,7 @@ export default function AuthGate({ children }) {
                 cursor: "pointer",
               }}
             >
-              {mode === "login" ? "登录" : "注册"}
+              {mode === "login" ? "Sign In" : "Sign Up"}
             </button>
           </form>
 
@@ -153,7 +153,7 @@ export default function AuthGate({ children }) {
               padding: 0,
             }}
           >
-            {mode === "login" ? "没有账号？去注册" : "已有账号？去登录"}
+            {mode === "login" ? "No account? Sign up" : "Already have an account? Sign in"}
           </button>
 
           {message ? (
@@ -177,7 +177,7 @@ export default function AuthGate({ children }) {
         }}
       >
         <div style={{ fontSize: 14, color: "#475569" }}>
-          当前登录：{session.user.email}
+          Signed in as: {session.user.email}
         </div>
         <button
           onClick={handleLogout}
@@ -190,7 +190,7 @@ export default function AuthGate({ children }) {
             cursor: "pointer",
           }}
         >
-          退出登录
+          Sign Out
         </button>
       </div>
       {children}

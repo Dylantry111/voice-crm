@@ -87,7 +87,6 @@ export async function submitPublicIntake({ token, form }) {
     address: form.address || "",
     requirement: form.requirement || "Public intake submission",
     notes: mergedNotes || form.requirement || "Submitted via public intake",
-    preferred_booking_notes: preferredBookingNotes,
     status: "New Lead",
     tags: ["Public Intake", "Needs Scheduling"],
     source: "public_intake",

@@ -362,7 +362,6 @@ export default function App() {
         c.address,
         c.requirement,
         c.status,
-        c.preferred_booking_notes,
         ...(c.tags || []),
       ]
         .join(" ")
@@ -429,7 +428,7 @@ export default function App() {
       saved_location_id: overrides.saved_location_id || "",
       location_name: overrides.location_name || (contact?.address ? "Customer Address" : ""),
       location_address: overrides.location_address || contact?.address || "",
-      notes: overrides.notes || contact?.preferred_booking_notes || "",
+      notes: overrides.notes || contact?.notes || "",
       status: overrides.status || "confirmed",
     });
   }
@@ -503,8 +502,9 @@ export default function App() {
         email: draft.email || "",
         address: draft.address || "",
         requirement: draft.requirement || "General enquiry",
-        preferred_booking_notes: draft.preferredBookingNotes || "",
-        notes: draft.notes || voiceInput,
+        notes: [draft.notes || voiceInput, draft.preferredBookingNotes ? `Booking preference: ${draft.preferredBookingNotes}` : ""]
+          .filter(Boolean)
+          .join("\n\n"),
         status: draft.status || "New Lead",
         tags: draft.tags || [],
         source: "manual",
@@ -536,7 +536,6 @@ export default function App() {
         address: selectedContact.address || "",
         requirement: selectedContact.requirement || "",
         notes: selectedContact.notes || "",
-        preferred_booking_notes: selectedContact.preferred_booking_notes || "",
         status: selectedContact.status || "New Lead",
         tags: selectedContact.tags || [],
       });
@@ -721,7 +720,7 @@ export default function App() {
 
   function handleExportContacts() {
     const rows = [
-      ["name", "phone", "email", "address", "requirement", "status", "preferred_booking_notes", "created_at"],
+      ["name", "phone", "email", "address", "requirement", "status", "created_at"],
       ...filteredContacts.map((contact) => [
         contact.name,
         contact.phone,
@@ -729,7 +728,6 @@ export default function App() {
         contact.address,
         contact.requirement,
         contact.status,
-        contact.preferred_booking_notes,
         contact.created_at,
       ]),
     ];
@@ -767,12 +765,12 @@ export default function App() {
     : "";
 
   const tabButtons = [
-    ["dashboard", "总览"],
-    ["contacts", "联系人"],
-    ["calendar", "日历"],
-    ["capture", "快速录入"],
+    ["dashboard", "Overview"],
+    ["contacts", "Contacts"],
+    ["calendar", "Calendar"],
+    ["capture", "Capture"],
     ["intake", "Intake"],
-    ["settings", "设置"],
+    ["settings", "Settings"],
   ];
 
   if (isPublicIntakeMode) {
@@ -806,7 +804,7 @@ export default function App() {
               Voice CRM
             </div>
             <div style={{ marginTop: 6, color: "#64748b", fontSize: 14 }}>
-              快速录入 · 日历预约 · public intake
+              Fast capture · calendar booking · public intake
             </div>
           </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -838,36 +836,36 @@ export default function App() {
 
         {(activeTab === "dashboard" || activeTab === "contacts" || activeTab === "calendar") && (
           <div className="metric-grid">
-            <MetricCard title="联系人" value={contacts.length} hint="支持快速录入、编辑、导出" />
-            <MetricCard title="预约" value={bookings.length} hint="日历空档可直接创建" />
-            <MetricCard title="常用地址" value={savedLocations.length} hint="可在设置中自定义" />
+            <MetricCard title="Contacts" value={contacts.length} hint="Fast capture, editing, and export" />
+            <MetricCard title="Bookings" value={bookings.length} hint="Create directly from available calendar slots" />
+            <MetricCard title="Saved Locations" value={savedLocations.length} hint="Customizable in Settings" />
             <MetricCard
-              title="公开 Intake"
+              title="Public Intake"
               value={intakeProfile?.is_enabled ? "ON" : "OFF"}
-              hint={intakeProfile?.intake_token || "未配置"}
+              hint={intakeProfile?.intake_token || "Not configured"}
             />
           </div>
         )}
 
         {activeTab === "dashboard" && (
           <div className="dashboard-grid">
-            <Section title="快捷动作" muted>
+            <Section title="Quick Actions" muted>
               <div className="action-row">
                 <button style={ui.primaryBtn} onClick={() => setActiveTab("capture")}>
-                  录入新联系人
+                  Add New Contact
                 </button>
                 <button style={ui.secondaryBtn} onClick={() => setActiveTab("calendar")}>
-                  打开日历排程
+                  Open Calendar
                 </button>
                 <button style={ui.secondaryBtn} onClick={handleExportContacts}>
-                  导出联系人
+                  Export Contacts
                 </button>
                 <button style={ui.secondaryBtn} onClick={handleExportBookings}>
-                  导出预约
+                  Export Bookings
                 </button>
               </div>
             </Section>
-            <Section title="最近联系人">
+            <Section title="Recent Contacts">
               <div className="card-stack-tight">
                 {contacts.slice(0, 5).map((contact) => (
                   <div
@@ -898,8 +896,8 @@ export default function App() {
 
         {activeTab === "capture" && (
           <Section
-            title="自然语言快速录入"
-            right={<button style={ui.secondaryBtn} onClick={fillFromVoice}>自动识别并填充</button>}
+            title="Natural Language Quick Capture"
+            right={<button style={ui.secondaryBtn} onClick={fillFromVoice}>Auto Fill</button>}
           >
             <div className="list-stack">
               <textarea
@@ -907,7 +905,7 @@ export default function App() {
                 value={voiceInput}
                 onChange={(e) => setVoiceInput(e.target.value)}
                 rows={5}
-                placeholder="例如：王小梅，电话 13800138000，住在龙岗区布吉，周五下午有空，想约上门看看。"
+                placeholder="Example: Wang Xiaomei, phone 13800138000, lives in Longgang Buji, available Friday afternoon, wants an on-site visit."
               />
               <div className="field-grid-fit">
                 <input
@@ -959,15 +957,15 @@ export default function App() {
                     padding: 10,
                   }}
                 >
-                  发现疑似重复：{duplicateResult.matches.map((m) => m.contact.name).join("，")}
+                  Possible duplicate found: {duplicateResult.matches.map((m) => m.contact.name).join(", ")}
                 </div>
               ) : null}
               <div className="action-row">
                 <button style={ui.primaryBtn} onClick={() => handleCreateContact({ openBookingAfterSave: true })}>
-                  保存并预约
+                  Save and Book
                 </button>
                 <button style={ui.secondaryBtn} onClick={() => handleCreateContact({ openBookingAfterSave: false })}>
-                  仅保存联系人
+                  Save Contact Only
                 </button>
               </div>
             </div>
@@ -977,24 +975,24 @@ export default function App() {
         {activeTab === "contacts" && (
           <div className="contacts-grid">
             <Section
-              title="联系人列表"
+              title="Contacts"
               right={
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   <input
                     style={ui.input}
-                    placeholder="搜索联系人"
+                    placeholder="Search contacts"
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                   />
                   <button style={ui.secondaryBtn} onClick={handleExportContacts}>
-                    导出 CSV
+                    Export CSV
                   </button>
                 </div>
               }
             >
               <div className="list-stack">
                 {filteredContacts.length === 0 ? (
-                  <div className="empty-state">暂无联系人</div>
+                  <div className="empty-state">No contacts yet</div>
                 ) : (
                   filteredContacts.map((contact) => (
                     <button
@@ -1026,10 +1024,10 @@ export default function App() {
                         </span>
                       </div>
                       <div style={{ color: "#475569", fontSize: 14, marginTop: 8 }}>
-                        {contact.phone || "无电话"} {contact.email ? `· ${contact.email}` : ""}
+                        {contact.phone || "No phone"} {contact.email ? `· ${contact.email}` : ""}
                       </div>
                       <div style={{ color: "#64748b", fontSize: 13, marginTop: 6 }}>
-                        {contact.address || "无地址"}
+                        {contact.address || "No address"}
                       </div>
                     </button>
                   ))
@@ -1037,9 +1035,9 @@ export default function App() {
               </div>
             </Section>
 
-            <Section title={selectedContact ? `联系人详情 · ${selectedContact.name}` : "联系人详情"}>
+            <Section title={selectedContact ? `Contact Details · ${selectedContact.name}` : "Contact Details"}>
               {!selectedContact ? (
-                <div className="empty-state">请选择联系人</div>
+                <div className="empty-state">Please select a contact</div>
               ) : (
                 <div style={{ display: "grid", gap: 16 }}>
                   <div className="field-grid-2">
@@ -1089,39 +1087,30 @@ export default function App() {
                   />
                   <textarea
                     style={ui.textarea}
-                    value={selectedContact.preferred_booking_notes || ""}
-                    onChange={(e) =>
-                      updateSelectedContactField("preferred_booking_notes", e.target.value)
-                    }
-                    placeholder="预约时间偏好"
-                    rows={2}
-                  />
-                  <textarea
-                    style={ui.textarea}
                     value={selectedContact.notes || ""}
                     onChange={(e) => updateSelectedContactField("notes", e.target.value)}
-                    placeholder="备注"
+                    placeholder="Notes (you can include booking preference here)"
                     rows={4}
                   />
                   <div className="action-row">
                     <button style={ui.primaryBtn} onClick={handleSaveContactDetails}>
-                      保存联系人
+                      Save Contact
                     </button>
                     <button style={ui.secondaryBtn} onClick={() => handleMarkContact(selectedContact, "Contacted")}>
-                      标记 Contacted
+                      Mark Contacted
                     </button>
                     <button style={ui.secondaryBtn} onClick={() => handleMarkContact(selectedContact, "Quoted")}>
-                      标记 Quoted
+                      Mark Quoted
                     </button>
                     <button style={ui.secondaryBtn} onClick={() => openBookingForContact(selectedContact)}>
-                      立即预约
+                      Book Now
                     </button>
                   </div>
                   <div>
-                    <strong style={{ display: "block", marginBottom: 10 }}>该联系人预约</strong>
+                    <strong style={{ display: "block", marginBottom: 10 }}>Bookings for This Contact</strong>
                     <div className="card-stack-tight">
                       {contactBookings.length === 0 ? (
-                        <div className="empty-state">暂无预约</div>
+                        <div className="empty-state">No bookings yet</div>
                       ) : (
                         contactBookings.map((booking) => (
                           <div
@@ -1154,13 +1143,13 @@ export default function App() {
                               style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}
                             >
                               <button style={ui.secondaryBtn} onClick={() => startEditBooking(booking)}>
-                                编辑预约
+                                Edit Booking
                               </button>
                               <button
                                 style={ui.dangerBtn}
                                 onClick={() => handleDeleteBooking(booking.id)}
                               >
-                                删除预约
+                                Delete
                               </button>
                             </div>
                           </div>
@@ -1205,16 +1194,16 @@ export default function App() {
                 onEditBooking={startEditBooking}
                 onDeleteBooking={handleDeleteBooking}
                 showAvailability={true}
-                createLabel="直接建预约"
+                createLabel="Create Booking"
               />
             </Section>
 
-            <Section title="预约说明" muted>
+            <Section title="Booking Notes" muted>
               <div className="card-stack-tight">
-                <div>1. 直接点击空档，可立即创建预约。</div>
-                <div>2. 预约类型默认时长来自设置页。</div>
-                <div>3. 地址可选客户地址 / 常用地址 / 手动输入。</div>
-                <div>4. 保存前会做时间冲突检查，避免重复预约。</div>
+                <div>1. Click an open slot to create a booking immediately.</div>
+                <div>2. Event type default duration comes from Settings.</div>
+                <div>3. Address can come from customer address, saved locations, or manual entry.</div>
+                <div>4. A conflict check runs before saving to avoid overlapping bookings.</div>
               </div>
             </Section>
           </div>
@@ -1222,7 +1211,7 @@ export default function App() {
 
         {activeTab === "intake" && (
           <div className="intake-grid">
-            <Section title="公开 Intake 配置" muted>
+            <Section title="Public Intake Settings" muted>
               <div className="list-stack">
                 <label
                   style={{ display: "flex", gap: 8, alignItems: "center", color: "#334155", fontWeight: 600 }}
@@ -1234,7 +1223,7 @@ export default function App() {
                       setIntakeDraft((prev) => ({ ...prev, is_enabled: e.target.checked }))
                     }
                   />
-                  启用公开 Intake 页面
+                  Enable public intake page
                 </label>
                 <input
                   style={ui.input}
@@ -1242,7 +1231,7 @@ export default function App() {
                   onChange={(e) =>
                     setIntakeDraft((prev) => ({ ...prev, form_title: e.target.value }))
                   }
-                  placeholder="表单标题"
+                  placeholder="Form title"
                 />
                 <textarea
                   style={ui.textarea}
@@ -1251,19 +1240,19 @@ export default function App() {
                     setIntakeDraft((prev) => ({ ...prev, intro_text: e.target.value }))
                   }
                   rows={5}
-                  placeholder="介绍文案"
+                  placeholder="Intro copy"
                 />
                 <button style={ui.primaryBtn} onClick={handleSaveIntakeProfile}>
-                  保存 Intake 配置
+                  Save Intake Settings
                 </button>
               </div>
             </Section>
-            <Section title="Intake 链接">
+            <Section title="Intake Link">
               <div className="card-stack-tight">
                 <div>
                   <strong>Public URL</strong>
                   <div style={{ color: "#475569", marginTop: 4, wordBreak: "break-all" }}>
-                    {intakeUrl || "当前不可用"}
+                    {intakeUrl || "Unavailable"}
                   </div>
                 </div>
                 <div>
@@ -1272,14 +1261,14 @@ export default function App() {
                     onClick={() => {
                       if (!intakeUrl) return;
                       navigator.clipboard.writeText(intakeUrl);
-                      setMessage("Intake 链接已复制");
+                      setMessage("Intake link copied");
                     }}
                   >
-                    复制链接
+                    Copy Link
                   </button>
                 </div>
                 <div style={{ color: "#64748b", fontSize: 14 }}>
-                  客户可匿名访问这个链接并提交信息，提交时支持写入预约时间偏好。
+                  Customers can open this link anonymously and submit their details, including booking time preferences.
                 </div>
               </div>
             </Section>
@@ -1288,11 +1277,11 @@ export default function App() {
 
         {activeTab === "settings" && (
           <div className="intake-grid">
-            <Section title="预约类型与常用地址" muted>
+            <Section title="Event Types & Saved Locations" muted>
               <div className="list-stack">
                 <div>
                   <div style={{ fontSize: 13, color: "#64748b", marginBottom: 6 }}>
-                    状态列表（每行一个）
+                    Status options (one per line)
                   </div>
                   <textarea
                     style={ui.textarea}
@@ -1303,7 +1292,7 @@ export default function App() {
                 </div>
                 <div>
                   <div style={{ fontSize: 13, color: "#64748b", marginBottom: 6 }}>
-                    标签列表（每行一个）
+                    Tag options (one per line)
                   </div>
                   <textarea
                     style={ui.textarea}
@@ -1314,7 +1303,7 @@ export default function App() {
                 </div>
                 <div>
                   <div style={{ fontSize: 13, color: "#64748b", marginBottom: 6 }}>
-                    预约类型（每行：名称|默认分钟）
+                    Event types (one per line: name|default minutes)
                   </div>
                   <textarea
                     style={ui.textarea}
@@ -1325,7 +1314,7 @@ export default function App() {
                 </div>
                 <div>
                   <div style={{ fontSize: 13, color: "#64748b", marginBottom: 6 }}>
-                    常用地址（每行：名称|详细地址）
+                    Saved locations (one per line: name|full address)
                   </div>
                   <textarea
                     style={ui.textarea}
@@ -1335,11 +1324,11 @@ export default function App() {
                   />
                 </div>
                 <button style={ui.primaryBtn} onClick={handleSaveSettings}>
-                  保存 Settings
+                  Save Settings
                 </button>
               </div>
             </Section>
-            <Section title="当前系统状态">
+            <Section title="Current System State">
               <pre
                 style={{
                   margin: 0,

@@ -253,6 +253,20 @@ function parseSavedLocationsInput(value = "") {
     .filter(Boolean);
 }
 
+function buildPublicIntakeAssets(profile) {
+  const token = profile?.intake_token || "";
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const publicUrl = profile?.public_url || (token && origin ? `${origin}/intake/${token}` : "");
+  const qrCodeUrl = profile?.qr_code_url || (publicUrl
+    ? `https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(publicUrl)}`
+    : "");
+
+  return {
+    public_url: publicUrl,
+    qr_code_url: qrCodeUrl,
+  };
+}
+
 export default function App() {
   const pathname = typeof window !== "undefined" ? window.location.pathname : "/";
   const publicToken = pathname.startsWith("/intake/")
@@ -278,6 +292,8 @@ export default function App() {
     form_title: "",
     intro_text: "",
     is_enabled: true,
+    public_url: "",
+    qr_code_url: "",
   });
   const [settingsDraft, setSettingsDraft] = useState({
     statusOptions: [],
@@ -340,10 +356,13 @@ export default function App() {
       setSavedLocations(mergedSavedLocations);
       setIntakeProfile(intake);
       setSettings(settingsData);
+      const intakeAssets = buildPublicIntakeAssets(intake);
       setIntakeDraft({
         form_title: intake?.form_title || "",
         intro_text: intake?.intro_text || "",
         is_enabled: Boolean(intake?.is_enabled),
+        public_url: intakeAssets.public_url,
+        qr_code_url: intakeAssets.qr_code_url,
       });
       setSettingsDraft({
         statusOptions: settingsData?.statusOptions || [],
@@ -359,7 +378,7 @@ export default function App() {
           ...prev,
           event_type: settingsData.eventTypes[0].name,
           duration_minutes: settingsData.eventTypes[0].minutes || 60,
-          slotOptions: slotOptionsForEvent(settingsData.eventTypes[0].minutes || 60),
+          slotOptions: ensureSlotInOptions(prev.slot, slotOptionsForEvent(settingsData.eventTypes[0].minutes || 60)),
         }));
       }
     } catch (error) {
@@ -375,6 +394,21 @@ export default function App() {
       loadInitialData();
     }
   }, [isPublicIntakeMode]);
+
+  useEffect(() => {
+    if (!bookingModalOpen || bookingModalMode !== "calendar-create" || !selectedSlot) return;
+    const normalizedSlot = normalizeSlotValue(selectedSlot);
+    setBookingForm((prev) => {
+      if (prev.slot === normalizedSlot && (prev.slotOptions || []).includes(normalizedSlot)) {
+        return prev;
+      }
+      return {
+        ...prev,
+        slot: normalizedSlot,
+        slotOptions: ensureSlotInOptions(normalizedSlot, prev.slotOptions),
+      };
+    });
+  }, [bookingModalMode, bookingModalOpen, selectedSlot]);
 
   const filteredContacts = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -819,11 +853,14 @@ export default function App() {
     setMessage("");
     try {
       const updated = await updateMyIntakeProfile(intakeDraft);
+      const intakeAssets = buildPublicIntakeAssets(updated);
       setIntakeProfile(updated);
       setIntakeDraft({
         form_title: updated.form_title || "",
         intro_text: updated.intro_text || "",
         is_enabled: Boolean(updated.is_enabled),
+        public_url: intakeAssets.public_url,
+        qr_code_url: intakeAssets.qr_code_url,
       });
       setMessage("Intake settings saved");
     } catch (error) {

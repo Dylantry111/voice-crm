@@ -6,6 +6,22 @@ export async function fetchBookings() {
   return data || [];
 }
 
+export async function checkBookingConflict({ userId, startTime, endTime, excludeBookingId = null }) {
+  const { data, error } = await supabase
+    .from("bookings")
+    .select("id, start_time, end_time, event_type, contact_id")
+    .eq("user_id", userId)
+    .lt("start_time", endTime)
+    .gt("end_time", startTime);
+
+  if (error) throw error;
+  const conflicts = (data || []).filter((item) => item.id !== excludeBookingId);
+  return {
+    hasConflict: conflicts.length > 0,
+    conflicts,
+  };
+}
+
 export async function createBooking(payload) {
   const { data, error } = await supabase.from("bookings").insert(payload).select().single();
   if (error) throw error;

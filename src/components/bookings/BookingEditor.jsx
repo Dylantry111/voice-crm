@@ -12,9 +12,9 @@ function LocationChooser({ bookingForm, savedLocations, selectedContact, onChang
         <input
           type="radio"
           name="location_source"
-          checked={bookingForm.location_source === "customer"}
+          checked={bookingForm.location_source === "contact_address"}
           onChange={() => {
-            onChange("location_source", "customer");
+            onChange("location_source", "contact_address");
             onChange("saved_location_id", "");
             onChange("location_name", "Customer Address");
             onChange("location_address", customerAddress);
@@ -31,8 +31,8 @@ function LocationChooser({ bookingForm, savedLocations, selectedContact, onChang
         <input
           type="radio"
           name="location_source"
-          checked={bookingForm.location_source === "saved"}
-          onChange={() => onChange("location_source", "saved")}
+          checked={bookingForm.location_source === "saved_location"}
+          onChange={() => onChange("location_source", "saved_location")}
           className="mt-1"
         />
         <div className="min-w-0 flex-1">
@@ -46,14 +46,42 @@ function LocationChooser({ bookingForm, savedLocations, selectedContact, onChang
               onChange("location_address", selected?.address || "");
             }}
             className="mt-2 h-11 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none"
-            disabled={bookingForm.location_source !== "saved"}
+            disabled={bookingForm.location_source !== "saved_location"}
           >
             <option value="">Select saved location</option>
             {savedLocations.map((item) => (
               <option key={item.id} value={item.id}>{item.name}</option>
             ))}
           </select>
-          <div className="mt-2 text-xs text-slate-500">{bookingForm.location_source === "saved" ? (bookingForm.location_address || "No location selected") : "Choose this option to use one of your saved locations."}</div>
+          <div className="mt-2 text-xs text-slate-500">{bookingForm.location_source === "saved_location" ? (bookingForm.location_address || "No location selected") : "Choose this option to use one of your saved locations."}</div>
+        </div>
+      </label>
+
+      <label className="flex items-start gap-3 rounded-2xl border border-slate-200 bg-white p-3">
+        <input
+          type="radio"
+          name="location_source"
+          checked={bookingForm.location_source === "manual"}
+          onChange={() => onChange("location_source", "manual")}
+          className="mt-1"
+        />
+        <div className="min-w-0 flex-1">
+          <div className="text-sm font-semibold text-slate-900">Manual Address</div>
+          <input
+            value={bookingForm.location_name || ""}
+            onChange={(e) => onChange("location_name", e.target.value)}
+            placeholder="Location name"
+            className="mt-2 h-11 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none"
+            disabled={bookingForm.location_source !== "manual"}
+          />
+          <textarea
+            value={bookingForm.location_address || ""}
+            onChange={(e) => onChange("location_address", e.target.value)}
+            placeholder="Full address"
+            className="mt-2 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none"
+            rows={3}
+            disabled={bookingForm.location_source !== "manual"}
+          />
         </div>
       </label>
     </div>
@@ -158,6 +186,13 @@ export default function BookingEditor({
                   </select>
                 </div>
 
+                <div>
+                  <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Duration</label>
+                  <div className="mt-1 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                    {bookingForm.duration_minutes || 60} minutes
+                  </div>
+                </div>
+
                 {!isCustomerCreate ? (
                   <>
                     <div>
@@ -185,6 +220,17 @@ export default function BookingEditor({
                     </div>
                   </>
                 ) : null}
+
+                <div className="md:col-span-2 xl:col-span-1">
+                  <label className="text-xs font-medium uppercase tracking-wide text-slate-500">Notes</label>
+                  <textarea
+                    value={bookingForm.notes || ""}
+                    onChange={(e) => onChange("notes", e.target.value)}
+                    className="mt-1 w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none"
+                    rows={3}
+                    placeholder="Booking notes / customer preference"
+                  />
+                </div>
               </div>
 
               {isCustomerCreate ? (

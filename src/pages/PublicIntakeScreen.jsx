@@ -18,7 +18,7 @@ export default function PublicIntakeScreen({ token }) {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
   const [submitted, setSubmitted] = useState(false);
-  const [form, setForm] = useState({ name: "", phone: "", email: "", address: "", requirement: "", notes: "" });
+  const [form, setForm] = useState({ name: "", phone: "", email: "", address: "", requirement: "", preferred_booking_notes: "", notes: "" });
 
   useEffect(() => {
     let active = true;
@@ -43,8 +43,8 @@ export default function PublicIntakeScreen({ token }) {
     try {
       await submitPublicIntake({ token, form });
       setSubmitted(true);
-      setMessage("提交成功，我们会尽快联系你。");
-      setForm({ name: "", phone: "", email: "", address: "", requirement: "", notes: "" });
+      setMessage("提交成功，我们会尽快联系你并安排后续预约。");
+      setForm({ name: "", phone: "", email: "", address: "", requirement: "", preferred_booking_notes: "", notes: "" });
     } catch (error) {
       console.error(error);
       setMessage(`提交失败：${error.message}`);
@@ -90,6 +90,7 @@ export default function PublicIntakeScreen({ token }) {
           <input style={styles.input} type="email" placeholder="Email" value={form.email} onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))} />
           <textarea style={styles.textarea} placeholder="Address" rows={2} value={form.address} onChange={(e) => setForm((prev) => ({ ...prev, address: e.target.value }))} />
           <textarea style={styles.textarea} required placeholder="What do you need help with?" rows={4} value={form.requirement} onChange={(e) => setForm((prev) => ({ ...prev, requirement: e.target.value }))} />
+          <textarea style={styles.textarea} placeholder="Preferred time for booking (e.g. Friday afternoon / tomorrow morning)" rows={2} value={form.preferred_booking_notes} onChange={(e) => setForm((prev) => ({ ...prev, preferred_booking_notes: e.target.value }))} />
           <textarea style={styles.textarea} placeholder="Extra notes" rows={3} value={form.notes} onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))} />
           <button style={styles.primaryBtn} type="submit">Submit</button>
           {message ? <div style={{ color: submitted ? "#166534" : "#b45309", fontSize: 14, background: submitted ? "#dcfce7" : "#fef3c7", borderRadius: 12, padding: 10 }}>{message}</div> : null}

@@ -74,6 +74,11 @@ export async function submitPublicIntake({ token, form }) {
   const profile = await fetchPublicIntakeProfileByToken(token);
   if (!profile) throw new Error("Intake 链接无效或已停用");
 
+  const preferredBookingNotes = form.preferred_booking_notes || "";
+  const mergedNotes = [form.notes, preferredBookingNotes ? `Booking preference: ${preferredBookingNotes}` : ""]
+    .filter(Boolean)
+    .join("\n\n");
+
   const payload = {
     user_id: profile.user_id,
     name: form.name || "New Lead",
@@ -81,9 +86,10 @@ export async function submitPublicIntake({ token, form }) {
     email: form.email || "",
     address: form.address || "",
     requirement: form.requirement || "Public intake submission",
-    notes: form.notes || form.requirement || "Submitted via public intake",
+    notes: mergedNotes || form.requirement || "Submitted via public intake",
+    preferred_booking_notes: preferredBookingNotes,
     status: "New Lead",
-    tags: ["Public Intake"],
+    tags: ["Public Intake", "Needs Scheduling"],
     source: "public_intake",
   };
 

@@ -1,20 +1,36 @@
 import React, { useState } from "react";
 import { DURATION_OPTIONS, FIELD_LIMITS } from "../lib/constants";
 
+function SettingsCard({ title, description, accent, children }) {
+  return (
+    <div className="settings-card">
+      <div className="settings-card-header">
+        <div>
+          <div className="settings-card-accent">{accent}</div>
+          <div className="settings-card-title">{title}</div>
+          <div className="settings-card-description">{description}</div>
+        </div>
+      </div>
+      <div className="settings-card-body">{children}</div>
+    </div>
+  );
+}
+
 function StatusList({ options, onAdd, onEdit }) {
   const [value, setValue] = useState("");
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="text-lg font-semibold">Status Options</div>
-      <div className="mt-1 text-sm text-slate-500">Used to track where each client is in your workflow.</div>
-
-      <div className="mt-4 flex flex-wrap gap-2">
+    <SettingsCard
+      title="Status Options"
+      description="Use clear workflow stages so each contact moves through the pipeline cleanly."
+      accent="Workflow"
+    >
+      <div className="settings-input-row">
         <input
           value={value}
           maxLength={FIELD_LIMITS.shortName}
           onChange={(e) => setValue(e.target.value)}
-          placeholder="New status..."
-          className="h-11 min-w-[180px] flex-1 rounded-2xl border border-slate-200 px-4 text-sm outline-none"
+          placeholder="Add a new status"
+          className="settings-input"
         />
         <button
           onClick={() => {
@@ -22,40 +38,44 @@ function StatusList({ options, onAdd, onEdit }) {
             onAdd(value.trim());
             setValue("");
           }}
-          className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-medium text-white"
+          className="settings-primary-btn"
         >
           Add
         </button>
       </div>
 
-      <div className="mt-4 space-y-2">
+      <div className="settings-list">
         {options.map((item) => (
-          <div key={item.id} className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-200 px-4 py-3">
-            <div className="min-w-[140px] flex-1 text-sm font-medium text-slate-800">{item.name}</div>
-            <button onClick={() => onEdit(item.id)} className="rounded-xl border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-800">
+          <div key={item.id} className="settings-row">
+            <div className="settings-row-main">
+              <div className="settings-row-title">{item.name}</div>
+              <div className="settings-row-meta">Contact stage in your workflow</div>
+            </div>
+            <button onClick={() => onEdit(item.id)} className="settings-secondary-btn">
               Edit
             </button>
           </div>
         ))}
       </div>
-    </div>
+    </SettingsCard>
   );
 }
 
 function TagList({ options, onAdd, onRemove }) {
   const [value, setValue] = useState("");
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="text-lg font-semibold">Tag Options</div>
-      <div className="mt-1 text-sm text-slate-500">Used to label and filter clients.</div>
-
-      <div className="mt-4 flex flex-wrap gap-2">
+    <SettingsCard
+      title="Tag Options"
+      description="Keep short labels ready for segmentation, filtering, and follow-up."
+      accent="Labels"
+    >
+      <div className="settings-input-row">
         <input
           value={value}
           maxLength={FIELD_LIMITS.shortName}
           onChange={(e) => setValue(e.target.value)}
-          placeholder="New tag..."
-          className="h-11 min-w-[180px] flex-1 rounded-2xl border border-slate-200 px-4 text-sm outline-none"
+          placeholder="Add a new tag"
+          className="settings-input"
         />
         <button
           onClick={() => {
@@ -63,23 +83,26 @@ function TagList({ options, onAdd, onRemove }) {
             onAdd(value.trim());
             setValue("");
           }}
-          className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-medium text-white"
+          className="settings-primary-btn"
         >
           Add
         </button>
       </div>
 
-      <div className="mt-4 space-y-2">
+      <div className="settings-list">
         {options.map((item) => (
-          <div key={item.id} className="flex flex-wrap items-center justify-between gap-2 rounded-2xl border border-slate-200 px-4 py-3">
-            <div className="min-w-[140px] flex-1 text-sm font-medium text-slate-800">{item.name}</div>
-            <button onClick={() => onRemove(item.id)} className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-700">
+          <div key={item.id} className="settings-row">
+            <div className="settings-row-main">
+              <div className="settings-row-title">{item.name}</div>
+              <div className="settings-row-meta">Reusable contact tag</div>
+            </div>
+            <button onClick={() => onRemove(item.id)} className="settings-danger-btn">
               Remove
             </button>
           </div>
         ))}
       </div>
-    </div>
+    </SettingsCard>
   );
 }
 
@@ -90,22 +113,23 @@ function EventTypesList({ options, onAdd, onEdit, onRemove }) {
   const labelFor = (mins) => DURATION_OPTIONS.find((x) => x.value === mins)?.label || `${mins} min`;
 
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="text-lg font-semibold">Event Types</div>
-      <div className="mt-1 text-sm text-slate-500">Defines booking types and default durations.</div>
-
-      <div className="mt-4 flex flex-wrap items-center gap-2">
+    <SettingsCard
+      title="Event Types"
+      description="Define what can be booked and how long each appointment should last by default."
+      accent="Scheduling"
+    >
+      <div className="settings-event-create">
         <input
           value={name}
           maxLength={FIELD_LIMITS.shortName}
           onChange={(e) => setName(e.target.value)}
-          placeholder="New event type..."
-          className="h-11 min-w-[180px] flex-1 rounded-2xl border border-slate-200 px-4 text-sm outline-none"
+          placeholder="Add a new event type"
+          className="settings-input"
         />
         <select
           value={minutes}
           onChange={(e) => setMinutes(e.target.value)}
-          className="h-11 w-[132px] shrink-0 rounded-2xl border border-slate-200 px-3 text-sm outline-none"
+          className="settings-select"
         >
           {DURATION_OPTIONS.map((option) => (
             <option key={option.value} value={option.value}>{option.label}</option>
@@ -118,29 +142,28 @@ function EventTypesList({ options, onAdd, onEdit, onRemove }) {
             setName("");
             setMinutes("60");
           }}
-          className="h-11 shrink-0 rounded-2xl bg-slate-900 px-4 text-sm font-medium text-white"
+          className="settings-primary-btn"
         >
           Add
         </button>
       </div>
 
-      <div className="mt-4 space-y-2">
+      <div className="settings-list">
         {options.map((item) => (
-          <div key={item.id} className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 px-4 py-3">
-            <div className="min-w-[160px] flex-1 truncate text-sm font-medium text-slate-800">{item.name}</div>
-            <div className="w-[132px] shrink-0 rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
-              {labelFor(item.minutes)}
+          <div key={item.id} className="settings-row settings-row-split">
+            <div className="settings-row-main">
+              <div className="settings-row-title">{item.name}</div>
+              <div className="settings-row-meta">Default duration: {labelFor(item.minutes)}</div>
             </div>
-            <button onClick={() => onEdit(item.id)} className="h-10 shrink-0 rounded-xl border border-slate-300 bg-white px-3 text-xs font-medium text-slate-800">
-              Edit
-            </button>
-            <button onClick={() => onRemove(item.id)} className="h-10 shrink-0 rounded-xl border border-rose-200 bg-rose-50 px-3 text-xs font-medium text-rose-700">
-              Remove
-            </button>
+            <div className="settings-row-actions">
+              <span className="settings-pill">{labelFor(item.minutes)}</span>
+              <button onClick={() => onEdit(item.id)} className="settings-secondary-btn">Edit</button>
+              <button onClick={() => onRemove(item.id)} className="settings-danger-btn">Remove</button>
+            </div>
           </div>
         ))}
       </div>
-    </div>
+    </SettingsCard>
   );
 }
 
@@ -148,24 +171,25 @@ function SavedLocationsList({ locations, onAdd, onRemove }) {
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="text-lg font-semibold">Saved Locations</div>
-      <div className="mt-1 text-sm text-slate-500">Reusable meeting or service locations.</div>
-
-      <div className="mt-4 space-y-2">
+    <SettingsCard
+      title="Saved Locations"
+      description="Store common visit or meeting addresses so bookings can be created faster."
+      accent="Locations"
+    >
+      <div className="settings-form-stack">
         <input
           value={name}
           maxLength={FIELD_LIMITS.locationName}
           onChange={(e) => setName(e.target.value)}
           placeholder="Location name"
-          className="h-11 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none"
+          className="settings-input"
         />
         <input
           value={address}
           maxLength={FIELD_LIMITS.address}
           onChange={(e) => setAddress(e.target.value)}
           placeholder="Full address"
-          className="h-11 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none"
+          className="settings-input"
         />
         <button
           onClick={() => {
@@ -174,26 +198,26 @@ function SavedLocationsList({ locations, onAdd, onRemove }) {
             setName("");
             setAddress("");
           }}
-          className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-medium text-white"
+          className="settings-primary-btn settings-primary-btn-full"
         >
           Add Location
         </button>
       </div>
 
-      <div className="mt-4 space-y-2">
+      <div className="settings-list">
         {locations.map((item) => (
-          <div key={item.id} className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 px-4 py-3">
-            <div className="min-w-[140px] flex-1">
-              <div className="text-sm font-medium text-slate-800">{item.name}</div>
-              <div className="text-xs text-slate-500">{item.address}</div>
+          <div key={item.id} className="settings-row settings-row-split">
+            <div className="settings-row-main">
+              <div className="settings-row-title">{item.name}</div>
+              <div className="settings-row-meta">{item.address}</div>
             </div>
-            <button onClick={() => onRemove(item.id)} className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-medium text-rose-700">
+            <button onClick={() => onRemove(item.id)} className="settings-danger-btn">
               Remove
             </button>
           </div>
         ))}
       </div>
-    </div>
+    </SettingsCard>
   );
 }
 
@@ -208,35 +232,40 @@ function EditDialog({ isOpen, title, initialName, initialMinutes, showDuration, 
 
   if (!isOpen) return null;
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-slate-900/40 p-4">
-      <div className="w-full max-w-md rounded-3xl bg-white p-5 shadow-2xl">
-        <div className="text-lg font-semibold">{title}</div>
-        <div className="mt-4 space-y-3">
-          <input
-            value={name}
-            maxLength={FIELD_LIMITS.shortName}
-            onChange={(e) => setName(e.target.value)}
-            className="h-11 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none"
-          />
-          {showDuration ? (
-            <select
-              value={minutes}
-              onChange={(e) => setMinutes(e.target.value)}
-              className="h-11 w-full rounded-2xl border border-slate-200 px-4 text-sm outline-none"
-            >
-              {DURATION_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>{option.label}</option>
-              ))}
-            </select>
-          ) : null}
+    <div className="fixed inset-0 z-[80] flex items-end justify-center bg-slate-900/40 p-0 md:items-center md:p-4">
+      <div className="settings-sheet">
+        <div className="settings-sheet-header">
+          <div className="settings-sheet-title">{title}</div>
+          <button onClick={onClose} className="settings-secondary-btn">Close</button>
         </div>
-        <div className="mt-4 flex gap-2">
-          <button onClick={() => onSave(name.trim(), Number(minutes))} className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-medium text-white">
-            Save
-          </button>
-          <button onClick={onClose} className="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-medium text-slate-800">
-            Cancel
-          </button>
+        <div className="settings-sheet-body">
+          <div className="settings-form-stack">
+            <input
+              value={name}
+              maxLength={FIELD_LIMITS.shortName}
+              onChange={(e) => setName(e.target.value)}
+              className="settings-input"
+            />
+            {showDuration ? (
+              <select
+                value={minutes}
+                onChange={(e) => setMinutes(e.target.value)}
+                className="settings-select"
+              >
+                {DURATION_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>{option.label}</option>
+                ))}
+              </select>
+            ) : null}
+          </div>
+          <div className="settings-sheet-actions">
+            <button onClick={() => onSave(name.trim(), Number(minutes))} className="settings-primary-btn">
+              Save
+            </button>
+            <button onClick={onClose} className="settings-secondary-btn">
+              Cancel
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -266,21 +295,24 @@ export default function SettingsPage({
 
   return (
     <section className="space-y-6">
-      <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-        <div className="text-lg font-semibold">Settings</div>
-        <div className="mt-2 text-sm text-slate-500">
-          Manage your workflow defaults and reusable booking data here.
+      <div className="settings-hero">
+        <div>
+          <div className="settings-hero-kicker">Workspace Setup</div>
+          <div className="settings-hero-title">Settings that match your daily flow</div>
+          <div className="settings-hero-description">
+            Keep workflow stages, booking types, and saved locations clean so capture and scheduling stay fast on mobile.
+          </div>
+          <div className="settings-hero-meta">
+            Current save mode: <span>{settingsMode}</span>
+          </div>
         </div>
-        <div className="mt-1 text-xs text-slate-500">
-          Current save mode: <span className="font-medium text-slate-900">{settingsMode}</span>
-        </div>
-        <div className="mt-4 flex flex-wrap gap-3">
-          <button onClick={onSaveSettings} className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-medium text-white">Save Settings</button>
-          <button onClick={onResetDefaults} className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-800">Reset to Defaults</button>
+        <div className="settings-hero-actions">
+          <button onClick={onSaveSettings} className="settings-primary-btn">Save Settings</button>
+          <button onClick={onResetDefaults} className="settings-secondary-btn">Reset to Defaults</button>
         </div>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-2">
+      <div className="settings-grid">
         <StatusList options={statusOptions} onAdd={onAddStatus} onEdit={setStatusEdit} />
         <TagList options={tagOptions} onAdd={onAddTag} onRemove={onRemoveTag} />
         <EventTypesList options={eventTypes} onAdd={onAddEventType} onEdit={setEventEdit} onRemove={onRemoveEventType} />

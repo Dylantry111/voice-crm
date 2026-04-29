@@ -198,6 +198,17 @@ function slotOptionsForEvent(minutes = 60) {
   return ALL_TIME_SLOTS.slice(0, Math.max(0, maxIndex));
 }
 
+function ensureSlotInOptions(slot, options = []) {
+  const normalizedSlot = normalizeSlotValue(slot);
+  if (!normalizedSlot) return options;
+  const nextOptions = Array.isArray(options) ? [...options] : [];
+  if (!nextOptions.includes(normalizedSlot)) {
+    nextOptions.push(normalizedSlot);
+    nextOptions.sort((a, b) => a.localeCompare(b));
+  }
+  return nextOptions;
+}
+
 function eventTypesToText(eventTypes = []) {
   return (eventTypes || [])
     .map((item) => `${item.name}|${item.minutes || 60}`)
@@ -242,12 +253,6 @@ function parseSavedLocationsInput(value = "") {
     .filter(Boolean);
 }
 
-function bookingModeTitle(mode) {
-  if (mode === "customer-create") return "Schedule Booking for Contact";
-  if (mode === "calendar-create") return "Create Booking from Open Slot";
-  return "Edit Booking";
-}
-
 export default function App() {
   const pathname = typeof window !== "undefined" ? window.location.pathname : "/";
   const publicToken = pathname.startsWith("/intake/")
@@ -286,6 +291,7 @@ export default function App() {
   const [selectedSlot, setSelectedSlot] = useState("");
   const [selectedBookingId, setSelectedBookingId] = useState("");
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
+  const [intakeSheetOpen, setIntakeSheetOpen] = useState(false);
   const [bookingModalMode, setBookingModalMode] = useState("customer-create");
   const [editingBookingId, setEditingBookingId] = useState("");
   const [bookingForm, setBookingForm] = useState({
@@ -302,10 +308,6 @@ export default function App() {
     notes: "",
     status: "confirmed",
   });
-
-  useEffect(() => {
-    if (!isPublicIntakeMode) loadInitialData();
-  }, [isPublicIntakeMode]);
 
   async function loadInitialData() {
     setLoading(true);
@@ -367,6 +369,12 @@ export default function App() {
       setLoading(false);
     }
   }
+
+  useEffect(() => {
+    if (!isPublicIntakeMode) {
+      loadInitialData();
+    }
+  }, [isPublicIntakeMode]);
 
   const filteredContacts = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -431,16 +439,18 @@ export default function App() {
   function resetBookingForm(contact = null, overrides = {}) {
     const firstEventType = activeEventTypes[0] || { name: "Measure", minutes: 60 };
     const defaultSlot = overrides.slot || "09:00";
+    const durationMinutes = overrides.duration_minutes || firstEventType.minutes || 60;
+    const slotOptions = ensureSlotInOptions(defaultSlot, slotOptionsForEvent(durationMinutes));
     setEditingBookingId("");
     setSelectedBookingId("");
     setSelectedSlot(defaultSlot);
     setBookingForm({
       contact_id: overrides.contact_id ?? contact?.id ?? "",
       event_type: overrides.event_type || firstEventType.name,
-      duration_minutes: overrides.duration_minutes || firstEventType.minutes || 60,
+      duration_minutes: durationMinutes,
       date: overrides.date || calendarDate || formatDateInputValue(new Date()),
       slot: defaultSlot,
-      slotOptions: slotOptionsForEvent(overrides.duration_minutes || firstEventType.minutes || 60),
+      slotOptions,
       location_source: overrides.location_source || (contact?.address ? "contact_address" : "manual"),
       saved_location_id: overrides.saved_location_id || "",
       location_name: overrides.location_name || (contact?.address ? "Customer Address" : ""),
@@ -491,7 +501,7 @@ export default function App() {
       duration_minutes: booking.duration_minutes || eventType?.minutes || minutes,
       date: formatDateInputValue(booking.start_time),
       slot,
-      slotOptions: slotOptionsForEvent(booking.duration_minutes || eventType?.minutes || minutes),
+      slotOptions: ensureSlotInOptions(slot, slotOptionsForEvent(booking.duration_minutes || eventType?.minutes || minutes)),
       location_source: booking.location_source || booking.location_type || "manual",
       saved_location_id: "",
       location_name: booking.location_name || "",
@@ -663,10 +673,11 @@ export default function App() {
         const eventType = getEventTypeByName(value);
         const minutes = eventType?.minutes || 60;
         next.duration_minutes = minutes;
-        next.slotOptions = slotOptionsForEvent(minutes);
+        next.slotOptions = ensureSlotInOptions(next.slot, slotOptionsForEvent(minutes));
       }
       if (field === "slot") {
         next.slot = normalizeSlotValue(value);
+        next.slotOptions = ensureSlotInOptions(next.slot, next.slotOptions);
       }
       if (field === "contact_id") {
         const contact = contacts.find((item) => item.id === value);
@@ -676,23 +687,12 @@ export default function App() {
         }
       }
       if (field === "duration_minutes") {
-        next.slotOptions = slotOptionsForEvent(Number(value) || 60);
+        next.slotOptions = ensureSlotInOptions(next.slot, slotOptionsForEvent(Number(value) || 60));
       }
       return next;
     });
   }
 
-  function updateSettingsList(field, value) {
-    if (field === "statusOptions" || field === "tagOptions") {
-      const items = value
-        .split("\n")
-        .map((item) => item.trim())
-        .filter(Boolean);
-      setSettingsDraft((prev) => ({ ...prev, [field]: items }));
-      return;
-    }
-    setSettingsDraft((prev) => ({ ...prev, [field]: value }));
-  }
 
   function syncStructuredSettings(patch) {
     setSettingsDraft((prev) => {

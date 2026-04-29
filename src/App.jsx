@@ -230,9 +230,9 @@ function parseSavedLocationsInput(value = "") {
 }
 
 function bookingModeTitle(mode) {
-  if (mode === "customer-create") return "为联系人安排预约";
-  if (mode === "calendar-create") return "从空档创建预约";
-  return "编辑预约";
+  if (mode === "customer-create") return "Schedule Booking for Contact";
+  if (mode === "calendar-create") return "Create Booking from Open Slot";
+  return "Edit Booking";
 }
 
 export default function App() {
@@ -253,7 +253,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [selectedContactId, setSelectedContactId] = useState("");
   const [voiceInput, setVoiceInput] = useState(
-    "王小梅，电话 13800138000，住在龙岗区布吉，周五下午有空，想约上门看看。"
+    "Wang Xiaomei, phone 13800138000, lives in Longgang Buji, available Friday afternoon, wants an on-site visit."
   );
   const [draft, setDraft] = useState(() => smartFill(voiceInput));
   const [intakeDraft, setIntakeDraft] = useState({
@@ -345,7 +345,7 @@ export default function App() {
       }
     } catch (error) {
       console.error(error);
-      setMessage(`加载失败：${error.message}`);
+      setMessage(`Load failed: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -491,7 +491,7 @@ export default function App() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user) throw new Error("请先登录");
+      if (!user) throw new Error("Please sign in first");
       if (duplicateResult.hasDuplicate && !window.confirm(buildDuplicateMessage(duplicateResult))) {
         return;
       }
@@ -511,7 +511,7 @@ export default function App() {
       });
       setContacts((prev) => [newContact, ...prev]);
       setSelectedContactId(newContact.id);
-      setMessage(`已创建联系人：${newContact.name}`);
+      setMessage(`Contact created: ${newContact.name}`);
       if (openBookingAfterSave) {
         setActiveTab("calendar");
         openBookingForContact(newContact);
@@ -521,7 +521,7 @@ export default function App() {
       }
     } catch (error) {
       console.error(error);
-      setMessage(`创建联系人失败：${error.message}`);
+      setMessage(`Create contact failed: ${error.message}`);
     }
   }
 
@@ -540,10 +540,10 @@ export default function App() {
         tags: selectedContact.tags || [],
       });
       setContacts((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
-      setMessage(`联系人已保存：${updated.name}`);
+      setMessage(`Contact saved: ${updated.name}`);
     } catch (error) {
       console.error(error);
-      setMessage(`保存联系人失败：${error.message}`);
+      setMessage(`Save contact failed: ${error.message}`);
     }
   }
 
@@ -553,17 +553,17 @@ export default function App() {
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (!user) throw new Error("请先登录");
-      if (!bookingForm.contact_id) throw new Error("请先选择联系人");
-      if (!bookingForm.slot) throw new Error("请先选择预约时间");
+      if (!user) throw new Error("Please sign in first");
+      if (!bookingForm.contact_id) throw new Error("Please select a contact first");
+      if (!bookingForm.slot) throw new Error("Please select a booking time first");
       const start = new Date(`${bookingForm.date}T${normalizeSlotValue(bookingForm.slot)}:00`);
       const end = new Date(
         `${bookingForm.date}T${computeEndTime(bookingForm.slot, bookingForm.duration_minutes)}:00`
       );
       if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
-        throw new Error("预约时间无效");
+        throw new Error("Invalid booking time");
       }
-      if (end <= start) throw new Error("结束时间必须晚于开始时间");
+      if (end <= start) throw new Error("End time must be later than start time");
 
       const conflictCheck = await checkBookingConflict({
         userId: user.id,
@@ -572,7 +572,7 @@ export default function App() {
         excludeBookingId: editingBookingId || null,
       });
       if (conflictCheck.hasConflict) {
-        throw new Error("该时间段已有预约，请选择其他空档");
+        throw new Error("This time slot already has a booking. Please choose another open slot.");
       }
 
       const payload = {
@@ -593,11 +593,11 @@ export default function App() {
       if (editingBookingId) {
         const updated = await updateBooking(editingBookingId, payload);
         setBookings((prev) => prev.map((item) => (item.id === updated.id ? updated : item)));
-        setMessage("预约已更新");
+        setMessage("Booking updated");
       } else {
         const created = await createBooking(payload);
         setBookings((prev) => [created, ...prev]);
-        setMessage("预约已创建");
+        setMessage("Booking created");
       }
 
       setBookingModalOpen(false);
@@ -605,12 +605,12 @@ export default function App() {
       setSelectedBookingId("");
     } catch (error) {
       console.error(error);
-      setMessage(`保存预约失败：${error.message}`);
+      setMessage(`Save booking failed: ${error.message}`);
     }
   }
 
   async function handleDeleteBooking(bookingId) {
-    if (!window.confirm("确认删除这个预约？")) return;
+    if (!window.confirm("Delete this booking?")) return;
     setMessage("");
     try {
       await deleteBooking(bookingId);
@@ -619,10 +619,10 @@ export default function App() {
         setBookingModalOpen(false);
         setEditingBookingId("");
       }
-      setMessage("预约已删除");
+      setMessage("Booking deleted");
     } catch (error) {
       console.error(error);
-      setMessage(`删除预约失败：${error.message}`);
+      setMessage(`Delete booking failed: ${error.message}`);
     }
   }
 
@@ -631,10 +631,10 @@ export default function App() {
     try {
       const updated = await updateContact(contact.id, { status: nextStatus });
       setContacts((prev) => prev.map((item) => (item.id === contact.id ? updated : item)));
-      setMessage(`已更新 ${contact.name} 状态为 ${nextStatus}`);
+      setMessage(`Updated ${contact.name} to ${nextStatus}`);
     } catch (error) {
       console.error(error);
-      setMessage(`更新联系人失败：${error.message}`);
+      setMessage(`Update contact failed: ${error.message}`);
     }
   }
 
@@ -694,10 +694,10 @@ export default function App() {
         eventTypesText: eventTypesToText(next.eventTypes),
         savedLocationsText: savedLocationsToText(next.savedLocations || []),
       });
-      setMessage("设置已保存到浏览器本地");
+      setMessage("Settings saved locally in browser");
     } catch (error) {
       console.error(error);
-      setMessage(`保存 Settings 失败：${error.message}`);
+      setMessage(`Save settings failed: ${error.message}`);
     }
   }
 
@@ -711,10 +711,10 @@ export default function App() {
         intro_text: updated.intro_text || "",
         is_enabled: Boolean(updated.is_enabled),
       });
-      setMessage("Intake 配置已保存");
+      setMessage("Intake settings saved");
     } catch (error) {
       console.error(error);
-      setMessage(`保存 Intake 配置失败：${error.message}`);
+      setMessage(`Save intake settings failed: ${error.message}`);
     }
   }
 
@@ -732,7 +732,7 @@ export default function App() {
       ]),
     ];
     downloadCsv("voice-crm-contacts.csv", rows);
-    setMessage("联系人 CSV 已导出");
+    setMessage("Contacts CSV exported");
   }
 
   function handleExportBookings() {
@@ -751,7 +751,7 @@ export default function App() {
       }),
     ];
     downloadCsv("voice-crm-bookings.csv", rows);
-    setMessage("预约 CSV 已导出");
+    setMessage("Bookings CSV exported");
   }
 
   function shiftCalendarDate(days) {
@@ -775,7 +775,7 @@ export default function App() {
 
   if (isPublicIntakeMode) {
     return (
-      <Suspense fallback={<div style={{ padding: 24 }}>加载中...</div>}>
+      <Suspense fallback={<div style={{ padding: 24 }}>Loading...</div>}>
         <PublicIntakeScreen token={publicToken} />
       </Suspense>
     );
@@ -910,37 +910,37 @@ export default function App() {
               <div className="field-grid-fit">
                 <input
                   style={ui.input}
-                  placeholder="姓名"
+                  placeholder="Name"
                   value={draft.name || ""}
                   onChange={(e) => setDraft((prev) => ({ ...prev, name: e.target.value }))}
                 />
                 <input
                   style={ui.input}
-                  placeholder="电话"
+                  placeholder="Phone"
                   value={draft.phone || ""}
                   onChange={(e) => setDraft((prev) => ({ ...prev, phone: e.target.value }))}
                 />
                 <input
                   style={ui.input}
-                  placeholder="邮箱"
+                  placeholder="Email"
                   value={draft.email || ""}
                   onChange={(e) => setDraft((prev) => ({ ...prev, email: e.target.value }))}
                 />
                 <input
                   style={ui.input}
-                  placeholder="地址"
+                  placeholder="Address"
                   value={draft.address || ""}
                   onChange={(e) => setDraft((prev) => ({ ...prev, address: e.target.value }))}
                 />
                 <input
                   style={ui.input}
-                  placeholder="需求"
+                  placeholder="Requirement"
                   value={draft.requirement || ""}
                   onChange={(e) => setDraft((prev) => ({ ...prev, requirement: e.target.value }))}
                 />
                 <input
                   style={ui.input}
-                  placeholder="预约偏好"
+                  placeholder="Booking preference"
                   value={draft.preferredBookingNotes || ""}
                   onChange={(e) =>
                     setDraft((prev) => ({ ...prev, preferredBookingNotes: e.target.value }))
@@ -1045,19 +1045,19 @@ export default function App() {
                       style={ui.input}
                       value={selectedContact.name || ""}
                       onChange={(e) => updateSelectedContactField("name", e.target.value)}
-                      placeholder="姓名"
+                      placeholder="Name"
                     />
                     <input
                       style={ui.input}
                       value={selectedContact.phone || ""}
                       onChange={(e) => updateSelectedContactField("phone", e.target.value)}
-                      placeholder="电话"
+                      placeholder="Phone"
                     />
                     <input
                       style={ui.input}
                       value={selectedContact.email || ""}
                       onChange={(e) => updateSelectedContactField("email", e.target.value)}
-                      placeholder="邮箱"
+                      placeholder="Email"
                     />
                     <select
                       style={ui.select}
@@ -1075,14 +1075,14 @@ export default function App() {
                     style={ui.textarea}
                     value={selectedContact.address || ""}
                     onChange={(e) => updateSelectedContactField("address", e.target.value)}
-                    placeholder="地址"
+                    placeholder="Address"
                     rows={2}
                   />
                   <textarea
                     style={ui.textarea}
                     value={selectedContact.requirement || ""}
                     onChange={(e) => updateSelectedContactField("requirement", e.target.value)}
-                    placeholder="需求"
+                    placeholder="Requirement"
                     rows={2}
                   />
                   <textarea
@@ -1166,14 +1166,14 @@ export default function App() {
         {activeTab === "calendar" && (
           <div className="calendar-grid">
             <Section
-              title="日历排程"
+              title="Calendar Scheduler"
               right={
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   <button style={ui.secondaryBtn} onClick={() => setCalendarDate(formatDateInputValue(new Date()))}>
-                    今天
+                    Today
                   </button>
                   <button style={ui.secondaryBtn} onClick={handleExportBookings}>
-                    导出预约
+                    Export Bookings
                   </button>
                 </div>
               }

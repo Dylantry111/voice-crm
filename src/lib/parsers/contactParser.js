@@ -20,6 +20,9 @@ const INVALID_NAME_TOKENS = new Set([
   "需求",
   "备注",
   "客户",
+  "姓名",
+  "名字",
+  "联系人",
 ]);
 
 function cleanName(value = "") {
@@ -28,22 +31,46 @@ function cleanName(value = "") {
   return name;
 }
 
+function splitSegments(text = "") {
+  return text
+    .split(/[，,。；;\n]+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function isLikelyNameLabel(segment = "") {
+  return /^(?:姓名|名字|联系人|客户|name|contact|customer)[:：\s]/i.test(segment);
+}
+
+function isContactInfoLabel(segment = "") {
+  return /^(?:电话|手机|手机号|联系电话|phone|mobile|邮箱|邮件|email|地址|住址|住在|address)[:：\s]/i.test(segment);
+}
+
 function extractChineseName(text = "") {
   const labeled = extract(/(?:姓名|名字|联系人|客户)[:：\s]*([\u4e00-\u9fa5]{2,4})/i, text);
   if (cleanName(labeled)) return cleanName(labeled);
 
-  const match = text.match(/(?:^|[，,。\s])([\u4e00-\u9fa5]{2,4})(?:[，,。\s]|电话|手机号|联系电话|地址|住在|住址|邮箱|邮件|想约|需要|$)/);
-  return cleanName(match ? match[1] : "");
+  const firstSegment = splitSegments(text)[0] || "";
+  if (!firstSegment || isContactInfoLabel(firstSegment)) return "";
+
+  const candidate = extract(/^([\u4e00-\u9fa5]{2,4})(?:\s|$)/, firstSegment);
+  return cleanName(candidate);
 }
 
 function extractEnglishName(text = "") {
   const labeled = extract(/(?:name|customer|contact)[:：\s]*([A-Za-z][A-Za-z' -]{1,40})/i, text);
   if (cleanName(labeled)) return cleanName(labeled);
 
-  const leading = extract(/^([A-Za-z][A-Za-z' -]{1,40}?)(?:[，,]|\s+(?:phone|mobile|email|address|wants|needs)|$)/i, text);
-  if (cleanName(leading)) return cleanName(leading);
+  const firstSegment = splitSegments(text)[0] || "";
+  if (!firstSegment || isContactInfoLabel(firstSegment) || /\d/.test(firstSegment)) return "";
 
-  return cleanName(text.split(/[，,\s]+/)[0] || "");
+  if (isLikelyNameLabel(firstSegment)) {
+    const direct = extract(/^(?:name|contact|customer)[:：\s]*([A-Za-z][A-Za-z' -]{1,40})/i, firstSegment);
+    return cleanName(direct);
+  }
+
+  const candidate = extract(/^([A-Za-z][A-Za-z' -]{1,40})(?:\s|$)/, firstSegment);
+  return cleanName(candidate);
 }
 
 function extractAddress(text = "") {

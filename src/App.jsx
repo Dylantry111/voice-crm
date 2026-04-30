@@ -452,7 +452,18 @@ export default function App() {
   }, [bookings, selectedContact]);
 
   function fillFromVoice() {
-    setDraft((prev) => ({ ...prev, ...smartFill(voiceInput) }));
+    const parsed = smartFill(voiceInput);
+    setDraft((prev) => ({
+      ...prev,
+      ...parsed,
+      name: parsed.name || "",
+      phone: parsed.phone || "",
+      email: parsed.email || "",
+      address: parsed.address || "",
+      requirement: parsed.requirement || "",
+      preferredBookingNotes: parsed.preferredBookingNotes || "",
+      notes: parsed.notes || voiceInput,
+    }));
   }
 
   function updateSelectedContactField(field, value) {
